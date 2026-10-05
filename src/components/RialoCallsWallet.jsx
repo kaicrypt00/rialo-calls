@@ -421,7 +421,7 @@ export default function RialoCallsWallet() {
                   </div>
                 </div>
                 <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(223,219,207,0.05)', border: '1px solid rgba(223,219,207,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img src="/src/assets/rialo-symbol.png" alt="RLO" style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.75 }} />
+                  <img src="/rialo-symbol.png" alt="RLO" style={{ width: 16, height: 16, objectFit: 'contain', opacity: 0.75 }} />
                 </div>
               </div>
             </div>

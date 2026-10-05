@@ -211,7 +211,7 @@ export default function MintProfileModal() {
         <div className="modal-header">
           <div>
             <div style={{ fontSize: 28, marginBottom: 6 }}>
-              <img src="/src/assets/rialo-symbol.png" alt="Rialo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+              <img src="/rialo-symbol.png" alt="Rialo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
             </div>
             <h2 className="modal-title">Set Up Your Profile</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>

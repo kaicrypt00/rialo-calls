@@ -47,7 +47,7 @@ export default function Navbar() {
           <div className="navbar-logo" onClick={() => navigate('/')}>
             <div className="navbar-logo-icon">
               <img
-                src="/src/assets/rialo-symbol.png"
+                src="/rialo-symbol.png"
                 alt="Rialo"
                 style={{ width: '28px', height: '28px', objectFit: 'contain' }}
               />

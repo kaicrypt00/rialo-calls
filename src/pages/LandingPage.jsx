@@ -60,7 +60,7 @@ export default function LandingPage() {
             flexShrink: 0,
             overflow: 'hidden',
           }}>
-            <img src="/src/assets/rialo-symbol.png" alt="Rialo Calls" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src="/rialo-symbol.png" alt="Rialo Calls" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <span style={{
             fontFamily: 'var(--font-display)',

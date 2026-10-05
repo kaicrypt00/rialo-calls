@@ -97,7 +97,7 @@ export default function AppLoader({ done }) {
           justifyContent: 'center',
         }}>
           <img
-            src="/src/assets/rialo-symbol.png"
+            src="/rialo-symbol.png"
             alt="Rialo"
             style={{ width: '80%', height: '80%', objectFit: 'contain' }}
             onError={e => { e.target.style.display = 'none' }}
