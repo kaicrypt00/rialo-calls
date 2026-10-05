@@ -114,7 +114,8 @@ export function SessionWalletProvider({ children }) {
     const sw = wallet || sessionWallet
     if (!sw) return
     try {
-      const MAX = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+      // Approve a safe fixed amount (1,000 RLO) — avoids unlimited approval Blockaid flags
+      const APPROVAL_AMOUNT = BigInt(1000) * BigInt(10 ** 18)
       const allowance = await publicClient.readContract({
         address: CONTRACT_ADDRESSES.RLO_TOKEN,
         abi: RLO_ABI,
@@ -127,7 +128,7 @@ export function SessionWalletProvider({ children }) {
           address: CONTRACT_ADDRESSES.RLO_TOKEN,
           abi: RLO_ABI,
           functionName: 'approve',
-          args: [CONTRACT_ADDRESSES.BETTING_POOL, MAX],
+          args: [CONTRACT_ADDRESSES.BETTING_POOL, APPROVAL_AMOUNT],
         })
         console.log('✅ RLO approved for BettingPool')
       }

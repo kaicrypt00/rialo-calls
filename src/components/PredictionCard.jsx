@@ -144,15 +144,14 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         args: [sessionWallet.address, CONTRACT_ADDRESSES.BETTING_POOL],
       })
 
-      // 2. Approve if needed
+      // 2. Approve exact amount if needed
       if (allowance < amountWei) {
         showPending('Approving RLO...')
-        const MAX = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
         const approveTxHash = await sessionWallet.client.writeContract({
           address: CONTRACT_ADDRESSES.RLO_TOKEN,
           abi: RLO_ABI,
           functionName: 'approve',
-          args: [CONTRACT_ADDRESSES.BETTING_POOL, MAX],
+          args: [CONTRACT_ADDRESSES.BETTING_POOL, amountWei],
         })
         await publicClient.waitForTransactionReceipt({ hash: approveTxHash })
       }
