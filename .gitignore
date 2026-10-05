@@ -1,0 +1,53 @@
+# ============================================================
+# Rialo Calls — .gitignore
+# ============================================================
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# ── Environment variables — NEVER commit these ──────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ── Local dev / test scripts (contain hardcoded secrets) ────
+# These are one-off utility scripts used during development.
+# They are not part of the production app.
+*.mjs
+
+# ── Dev utility scripts (not part of production app) ────────
+*.ps1
+
+# ── SQL migration files (apply manually via Supabase dashboard) ──
+*.sql
+
+# ── AI agent config (not for deployment) ────────────────────
+.agents/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS files
+Thumbs.db
