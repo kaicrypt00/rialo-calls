@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/logo.png" alt="Rialo Calls" width="72" />
+<img src="src/assets/rialo-symbol.png" alt="Rialo Calls" width="72" />
 
 # Rialo Calls
 
