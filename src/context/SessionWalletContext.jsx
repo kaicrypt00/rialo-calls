@@ -16,10 +16,10 @@ const SESSION_KEY_PREFIX = 'rc_sw_'
 const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
 
 const SIGN_MESSAGE =
-  'Sign in to Rialo Calls\n\n' +
-  'This signature verifies ownership of your address.\n' +
-  'It does not grant any token permissions or on-chain access.\n\n' +
-  'Site: rialocalls.vercel.app'
+  'Rialo Calls: Activate your Rialo Calls Wallet.\n\n' +
+  'This creates a secure session wallet for seamless betting without transaction popups.\n\n' +
+  'This signature is deterministic and costs no gas. ' +
+  'Your main wallet funds and assets cannot be accessed through this signature.'
 
 const SessionWalletContext = createContext(null)
 

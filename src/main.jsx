@@ -40,10 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={rialoTheme} appInfo={{
-          appName: 'Rialo Calls',
-          learnMoreUrl: 'https://rialocalls.vercel.app',
-        }}>
+        <RainbowKitProvider theme={rialoTheme}>
           <BrowserRouter>
             <ToastProvider>
               <SessionWalletProvider>
