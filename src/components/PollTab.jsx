@@ -286,9 +286,9 @@ export default function PollTab() {
           {!loading && polls.length > 0 && (() => {
             const totalVotes = polls.reduce((s, p) => s + Number(p.voteCount), 0)
             const RANK_STYLE = [
-              { color: '#C9A84C', bg: 'rgba(201,168,76,0.08)', border: 'rgba(201,168,76,0.2)', label: '🥇' },
-              { color: '#A0A0A0', bg: 'rgba(160,160,160,0.06)', border: 'rgba(160,160,160,0.15)', label: '🥈' },
-              { color: '#8B6B3D', bg: 'rgba(139,107,61,0.06)', border: 'rgba(139,107,61,0.15)', label: '🥉' },
+              { color: '#DFDBCF', bg: 'rgba(223,219,207,0.08)', border: 'rgba(223,219,207,0.25)', label: '🥇' },
+              { color: '#B8B4AA', bg: 'rgba(223,219,207,0.05)', border: 'rgba(223,219,207,0.15)', label: '🥈' },
+              { color: '#7A7872', bg: 'rgba(223,219,207,0.03)', border: 'rgba(223,219,207,0.10)', label: '🥉' },
             ]
             return polls.map((poll, i) => {
               const pollIdStr = String(poll.id)
@@ -310,7 +310,7 @@ export default function PollTab() {
                   onMouseLeave={() => setHoveredPoll(null)}
                   style={{
                     background: i === 0 && voteCount > 0
-                      ? 'linear-gradient(135deg, rgba(201,168,76,0.04) 0%, rgba(20,20,20,1) 60%)'
+                      ? 'linear-gradient(135deg, rgba(223,219,207,0.05) 0%, rgba(20,20,20,1) 60%)'
                       : '#141414',
                     border: `1px solid ${i < 3 && voteCount > 0 ? rank.border : 'rgba(223,219,207,0.07)'}`,
                     borderRadius: '14px', padding: '0', marginBottom: '10px',
@@ -321,7 +321,7 @@ export default function PollTab() {
                   {isTop && (
                     <div style={{
                       height: 2,
-                      background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.6) 30%, rgba(201,168,76,0.8) 50%, rgba(201,168,76,0.6) 70%, transparent)',
+                      background: 'linear-gradient(90deg, transparent, rgba(223,219,207,0.6) 30%, rgba(223,219,207,0.8) 50%, rgba(223,219,207,0.6) 70%, transparent)',
                     }} />
                   )}
 
@@ -358,8 +358,8 @@ export default function PollTab() {
                               <span style={{
                                 display: 'inline-block', fontSize: 9, fontWeight: 700,
                                 letterSpacing: '0.1em', textTransform: 'uppercase',
-                                color: '#C9A84C', background: 'rgba(201,168,76,0.1)',
-                                border: '1px solid rgba(201,168,76,0.2)',
+                                color: '#DFDBCF', background: 'rgba(223,219,207,0.1)',
+                                border: '1px solid rgba(223,219,207,0.2)',
                                 padding: '2px 6px', borderRadius: 4, marginRight: 8,
                                 verticalAlign: 'middle',
                               }}>
@@ -417,7 +417,7 @@ export default function PollTab() {
                             <div style={{ textAlign: 'center' }}>
                               <span style={{
                                 fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700,
-                                color: i === 0 && voteCount > 0 ? '#C9A84C' : '#DFDBCF',
+                                color: i === 0 && voteCount > 0 ? '#DFDBCF' : '#DFDBCF',
                                 lineHeight: 1,
                               }}>
                                 {voteCount}
@@ -430,8 +430,8 @@ export default function PollTab() {
                         </div>
 
                         {poll.description && (
-                          <div style={{ color: '#555555', fontSize: '13px', marginBottom: 10, lineHeight: 1.5 }}>
-                            {poll.description}
+                          <div style={{ color: '#555555', fontSize: '13px', marginBottom: 10, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                            <DescriptionText text={poll.description} />
                           </div>
                         )}
 
@@ -445,7 +445,7 @@ export default function PollTab() {
                               height: '100%', borderRadius: 4,
                               width: `${pct}%`,
                               background: i === 0
-                                ? 'linear-gradient(90deg, rgba(201,168,76,0.6), rgba(201,168,76,0.9))'
+                                ? 'linear-gradient(90deg, rgba(223,219,207,0.6), rgba(223,219,207,0.9))'
                                 : 'rgba(223,219,207,0.2)',
                               transition: 'width 0.5s ease',
                             }} />
@@ -606,7 +606,7 @@ export default function PollTab() {
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          color: i === 0 ? '#C9A84C' : '#DFDBCF',
+                          color: i === 0 ? '#DFDBCF' : '#DFDBCF',
                           fontSize: '15px', fontWeight: '500', marginBottom: '4px',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
@@ -645,8 +645,8 @@ export default function PollTab() {
           box-shadow: 0 0 0 1px rgba(223,219,207,0.07), 0 4px 24px rgba(0,0,0,0.4), 0 0 18px rgba(223,219,207,0.04) !important;
         }
         .poll-card.hovered-gold {
-          border-color: rgba(201,168,76,0.45) !important;
-          box-shadow: 0 0 0 1px rgba(201,168,76,0.12), 0 4px 28px rgba(0,0,0,0.5), 0 0 22px rgba(201,168,76,0.1) !important;
+          border-color: rgba(223,219,207,0.45) !important;
+          box-shadow: 0 0 0 1px rgba(223,219,207,0.12), 0 4px 28px rgba(0,0,0,0.5), 0 0 22px rgba(223,219,207,0.1) !important;
         }
 
         /* Vote button interactions */
@@ -694,5 +694,36 @@ export default function PollTab() {
         }
       `}</style>
     </div>
+  )
+}
+
+function DescriptionText({ text }) {
+  const [expanded, setExpanded] = useState(false)
+  
+  if (!text) return null
+  const isLong = text.length > 150 || text.split('\n').length > 3
+  
+  if (!isLong) return <>{text}</>
+  
+  const display = expanded ? text : text.slice(0, 150).trim() + '... '
+  
+  return (
+    <span>
+      {display}
+      <span 
+        onClick={(e) => { e.preventDefault(); setExpanded(!expanded) }} 
+        style={{ 
+          color: '#DFDBCF', 
+          fontSize: 13, 
+          fontWeight: 600, 
+          cursor: 'pointer', 
+          textDecoration: 'underline',
+          marginLeft: expanded ? '8px' : '4px',
+          display: 'inline-block'
+        }}
+      >
+        {expanded ? 'Show less' : 'Read more'}
+      </span>
+    </span>
   )
 }
