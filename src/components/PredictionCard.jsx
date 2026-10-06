@@ -397,7 +397,9 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         <div>
           <div className="prediction-card-title" style={{ marginBottom: 6 }}>{prediction.title}</div>
           {prediction.description && (
-            <div className="prediction-card-desc">{prediction.description}</div>
+            <div className="prediction-card-desc" style={{ whiteSpace: 'pre-wrap' }}>
+              <DescriptionText text={prediction.description} />
+            </div>
           )}
         </div>
 
@@ -613,5 +615,30 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         )}
       </div>
     </div>
+  )
+}
+
+function DescriptionText({ text }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = text.length > 150 || text.split('\n').length > 3
+  
+  if (!isLong) return <>{text}</>
+  
+  const display = expanded ? text : text.slice(0, 150).trim() + '...'
+  
+  return (
+    <>
+      {display}
+      <button 
+        onClick={() => setExpanded(!expanded)} 
+        style={{ 
+          background: 'none', border: 'none', color: 'var(--accent-primary)', 
+          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '0 4px',
+          fontFamily: 'inherit'
+        }}
+      >
+        {expanded ? 'Show less' : 'Read more'}
+      </button>
+    </>
   )
 }
