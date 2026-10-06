@@ -80,7 +80,9 @@ export default function PollTab() {
         abi: POLL_REGISTRY_ABI,
         functionName: 'getHistory',
       })
-      const reversed = [...data].reverse()
+      // Filter out dev round 1
+      const filtered = [...data].filter(item => Number(item.round) !== 1)
+      const reversed = filtered.reverse()
       setHistory(reversed)
 
       const addresses = [...new Set(reversed.map(h => h.submittedBy.toLowerCase()))]
