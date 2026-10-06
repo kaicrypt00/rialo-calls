@@ -162,7 +162,7 @@ export default function LeaderboardPage() {
 
         {/* ─── 5 Stats in a single horizontal row (exact Stitch layout) ─── */}
         {loading ? (
-          <div style={{
+          <div className="arena-stats-main" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
             gap: 12,
@@ -173,7 +173,7 @@ export default function LeaderboardPage() {
             ))}
           </div>
         ) : (
-          <div style={{
+          <div className="arena-stats-main" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
             gap: 12,
@@ -227,7 +227,7 @@ export default function LeaderboardPage() {
           <>
             {/* ─── Podium: Rank 1 LEFT (large), Rank 2 CENTER, Rank 3 RIGHT ─── */}
             {top3.length > 0 && (
-              <div style={{
+              <div className="podium-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: top3.length === 1 ? '1fr' : top3.length === 2 ? '1fr 1fr' : '2fr 1.5fr 1.5fr',
                 gap: 16,
@@ -250,10 +250,9 @@ export default function LeaderboardPage() {
                 backdropFilter: 'blur(12px)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 16,
-                overflow: 'hidden',
               }}>
                 {/* Table header */}
-                <div style={{
+                <div className="leaderboard-table-header" style={{
                   display: 'grid',
                   gridTemplateColumns: '72px 1fr 140px 160px',
                   gap: 0,
@@ -529,7 +528,7 @@ function PodiumCard({ caller, rank, isFirst }) {
 
 function TableRow({ caller, rank }) {
   return (
-    <div style={{
+    <div className="leaderboard-table-row" style={{
       display: 'grid',
       gridTemplateColumns: '72px 1fr 140px 160px',
       gap: 0,

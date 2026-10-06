@@ -1760,9 +1760,10 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* Leaderboard arena stats — 3 cols on tablet */
-  .arena-stats-bento {
+  /* Leaderboard arena stats — 3 cols on tablet (overrides inline 5-col) */
+  .arena-stats-main {
     grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
   }
 
   /* Admin grid stays single col until wide enough */
@@ -2019,34 +2020,49 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 15px !important;
   }
 
-  /* ─── LEADERBOARD PAGE ─── */
-  /* Arena stats — 2 columns on mobile */
-  .arena-stats-bento {
+  /* ─── LEADERBOARD / ARENA PAGE ─── */
+  /*
+   * NOTE: All grids here use inline styles in JSX so we need !important
+   * to override them. This also future-proofs for any number of callers.
+   */
+
+  /* Arena stats row — 2 cols on mobile (was 5-col inline) */
+  .arena-stats-main {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px !important;
-    margin-bottom: 40px !important;
+    margin-bottom: 32px !important;
   }
 
-  /* Podium — full-width stack on mobile */
+  /* Podium top-3 — stack to 1 col on mobile (overrides dynamic inline cols) */
   .podium-grid {
     grid-template-columns: 1fr !important;
+    gap: 32px !important;
   }
 
-  /* Ranks 4-10 table — make horizontally scrollable */
+  /* Ranks 4-10 table wrapper —
+   * The JSX has overflow:'hidden' as inline, we override both
+   * overflow properties so the table can scroll horizontally */
   .leaderboard-table-wrapper {
+    overflow: visible !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
-    border-radius: 16px;
+    border-radius: 16px !important;
+    /* contain the border-radius visually */
+    isolation: isolate;
   }
 
-  /* Leaderboard table header/rows — reduce columns for mobile */
+  /*
+   * Header + every row use the SAME column template so they stay
+   * perfectly aligned no matter how many callers are in the table.
+   * We keep all 4 cols but compress widths to fit a phone screen.
+   * min-width ensures the row never collapses smaller than the content.
+   */
+  .leaderboard-table-header,
   .leaderboard-table-row {
-    grid-template-columns: 48px 1fr 100px !important; /* Drop WIN RATE col on mobile */
-  }
-
-  /* Hide PNL column label and value on small screens, show win rate */
-  .leaderboard-col-winrate {
-    display: none !important;
+    grid-template-columns: 44px 1fr 80px 100px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    min-width: 340px;
   }
 
   /* ─── PROFILE PAGE ─── */
