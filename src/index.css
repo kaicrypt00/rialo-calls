@@ -1740,3 +1740,121 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 101;
 }
 
+/* ---- Mobile & Tablet Optimizations ---- */
+@media (max-width: 1024px) {
+  .page-container {
+    padding: 80px 16px 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    height: auto !important;
+    min-height: var(--nav-height);
+    padding: 12px 16px !important;
+  }
+  
+  .navbar-inner {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px !important;
+  }
+  
+  .navbar-center {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    justify-content: center;
+    order: 3;
+    flex-wrap: wrap;
+  }
+  
+  .navbar-right {
+    order: 2;
+  }
+  
+  .text-hero {
+    font-size: clamp(32px, 8vw, 48px) !important;
+  }
+  
+  .glass-card {
+    padding: 16px !important;
+  }
+  
+  main > div[style*="display: flex"] {
+    flex-direction: column !important;
+    padding: 24px !important;
+    gap: 24px !important;
+  }
+  
+  main > div > div[style*="width: 1px"] {
+    width: 100% !important;
+    height: 1px !important;
+    margin: 0 !important;
+    background: linear-gradient(90deg, transparent, rgba(223,219,207,0.3), transparent) !important;
+  }
+  
+  .prediction-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .arena-stats-bento {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .bet-input-area {
+    padding: 8px !important;
+  }
+  
+  .btn-lg {
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+  
+  .top3-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .modal-box {
+    padding: 20px !important;
+    margin: 12px !important;
+    width: calc(100% - 24px) !important;
+  }
+  
+  .toast {
+    right: 12px !important;
+    left: 12px !important;
+    min-width: 0 !important;
+    width: calc(100% - 24px) !important;
+  }
+  
+  .data-table th, .data-table td {
+    padding: 8px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-link {
+    font-size: 13px !important;
+    padding: 6px 8px !important;
+  }
+  
+  .arena-stats-bento {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .profile-avatar-lg {
+    width: 64px !important;
+    height: 64px !important;
+    font-size: 24px !important;
+  }
+  
+  .stats-row {
+    gap: 16px !important;
+  }
+}
