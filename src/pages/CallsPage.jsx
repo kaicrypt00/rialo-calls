@@ -22,7 +22,6 @@ export default function CallsPage() {
   const [localLoading, setLocalLoading] = useState(false)
 
   const [activeTab, setActiveTab] = useState('all_calls')
-  const [showSettled, setShowSettled] = useState(false)
   const [visibleCount, setVisibleCount] = useState(8)
 
   // Fallback: if cache still cold when this page mounts, fetch own data
@@ -84,14 +83,8 @@ export default function CallsPage() {
   const source = allPredictions ?? localPredictions ?? []
   const loading = allPredictions === null && localLoading
 
-  // All filtering is client-side — instant, zero network
-  const ACTIVE_STATUSES  = ['open', 'locked']
-  const SETTLED_STATUSES = ['yes_wins', 'no_wins', 'refunded']
-
   const filteredPredictions = source.filter(p => {
-    const statusMatch = showSettled
-      ? SETTLED_STATUSES.includes(p.status)
-      : ACTIVE_STATUSES.includes(p.status)
+    const statusMatch = ['open', 'locked'].includes(p.status)
     const categoryMatch = activeTab === 'all_calls' || p.category === activeTab
     return statusMatch && categoryMatch
   })
@@ -128,21 +121,13 @@ export default function CallsPage() {
       }}>
         {/* Page heading */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {activeTab !== 'polls' && !showSettled && (
-            <span style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: 'var(--danger)',
-              display: 'inline-block',
-              animation: 'live-pulse 2s ease-in-out infinite',
-            }} />
-          )}
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: 'clamp(24px, 4vw, 36px)',
             fontWeight: 700,
             color: 'var(--text-primary)',
           }}>
-            {activeTab === 'polls' ? 'The Poll' : showSettled ? 'Settled Calls' : 'Active Calls'}
+            {activeTab === 'polls' ? 'The Poll' : 'Active Calls'}
           </h1>
         </div>
 
@@ -169,43 +154,6 @@ export default function CallsPage() {
           ))}
         </div>
 
-        {/* Active/Settled toggle — hidden on polls tab */}
-        {activeTab !== 'polls' && (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setShowSettled(false)}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                background: !showSettled ? 'rgba(223,219,207,0.08)' : 'transparent',
-                color: !showSettled ? '#DFDBCF' : '#555555',
-                transition: 'all 0.2s',
-              }}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setShowSettled(true)}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                background: showSettled ? 'rgba(223,219,207,0.08)' : 'transparent',
-                color: showSettled ? '#DFDBCF' : '#555555',
-                transition: 'all 0.2s',
-              }}
-            >
-              Settled
-            </button>
-          </div>
-        )}
 
         {/* Content */}
         {activeTab === 'polls' ? (
@@ -237,16 +185,13 @@ export default function CallsPage() {
                 borderRadius: 24,
               }}>
                 <div style={{ fontSize: 64, marginBottom: 24, opacity: 0.6 }}>
-                  {showSettled ? '📜' : '🎯'}
+                  🎯
                 </div>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-                  No {showSettled ? 'settled' : 'active'} calls
+                  No active calls
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-                  {showSettled
-                    ? 'No settled predictions in this category yet.'
-                    : 'No open predictions in this category yet.'
-                  }
+                  No open predictions in this category yet.
                 </p>
               </div>
             ) : (
