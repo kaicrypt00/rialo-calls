@@ -245,7 +245,7 @@ export default function LeaderboardPage() {
 
             {/* ─── Ranks 4–10 Table ─── */}
             {rest.length > 0 && (
-              <div style={{
+              <div className="leaderboard-table-wrapper" style={{
                 background: 'rgba(20,20,20,0.85)',
                 backdropFilter: 'blur(12px)',
                 border: '1px solid var(--border-subtle)',

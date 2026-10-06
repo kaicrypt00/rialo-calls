@@ -132,7 +132,7 @@ export default function CallsPage() {
         </div>
 
         {/* Tab navigation */}
-        <div style={{ display: 'flex', gap: '4px', padding: '4px', background: '#141414', borderRadius: '10px', width: 'fit-content' }}>
+        <div className="calls-tab-nav" style={{ display: 'flex', gap: '4px', padding: '4px', background: '#141414', borderRadius: '10px', width: 'fit-content' }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -196,7 +196,7 @@ export default function CallsPage() {
               </div>
             ) : (
               <>
-                <div style={{
+                <div className="calls-main-grid" style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(480px, 1fr))',
                   gap: 24,

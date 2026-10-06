@@ -242,7 +242,7 @@ export default function ProfilePage() {
         </button>
 
         {/* Profile Hero Card */}
-        <section style={{
+        <section className="profile-hero-section" style={{
           background: 'rgba(20,20,20,0.85)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
@@ -395,7 +395,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Action buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+          <div className="profile-action-btns" style={{ display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, position: 'relative', zIndex: 1 }}>
             <button
               onClick={handleShareStats}
               style={{
@@ -433,7 +433,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Stats Row */}
-        <section style={{
+        <section className="profile-stats-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 16,
@@ -512,6 +512,7 @@ export default function ProfilePage() {
           {TABS.map((tab, i) => (
             <button
               key={tab}
+              className="profile-tab-btn"
               onClick={() => setActiveTab(i)}
               style={{
                 background: 'none',
@@ -611,7 +612,7 @@ function MyCalls({ bets, betsLoading, betsHasMore, claimableMap, claimingId, cla
       )}
 
       {/* Table */}
-      <div style={{
+      <div className="my-calls-table-wrapper" style={{
         background: 'rgba(20,20,20,0.85)',
         backdropFilter: 'blur(12px)',
         border: '1px solid var(--border-subtle)',
@@ -633,7 +634,7 @@ function MyCalls({ bets, betsLoading, betsHasMore, claimableMap, claimingId, cla
         ) : (
           <>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+              <table className="my-calls-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
                 <thead>
                   <tr style={{ background: 'rgba(28,28,28,0.8)', borderBottom: '1px solid var(--border-subtle)' }}>
                     {['Market', 'Side', 'Stake', 'Payout', 'Status'].map(h => (

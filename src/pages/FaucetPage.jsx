@@ -148,7 +148,7 @@ export default function FaucetPage() {
 
         {/* ── Balance Cards (if wallet connected) ── */}
         {sessionWallet && (
-          <div style={{
+          <div className="faucet-balance-row" style={{
             display: 'flex', gap: 16, marginBottom: 48, flexWrap: 'wrap', justifyContent: 'center',
           }}>
             {[

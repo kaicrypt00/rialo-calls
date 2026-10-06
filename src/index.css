@@ -1740,121 +1740,570 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 101;
 }
 
-/* ---- Mobile & Tablet Optimizations ---- */
+/* =====================================================================
+   MOBILE & TABLET RESPONSIVE OPTIMIZATIONS
+   Breakpoints: 1024px (tablet), 768px (mobile), 480px (small mobile)
+   IMPORTANT: These rules ONLY affect phones and tablets.
+   PC/Laptop (> 1024px) is completely untouched.
+   ===================================================================== */
+
+/* ── Tablet (≤ 1024px) ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
+
+  /* Page layout — reduce excess padding */
   .page-container {
-    padding: 80px 16px 60px;
+    padding: 88px 20px 60px;
+  }
+
+  /* Calls page grid — 2 columns on tablet */
+  .calls-grid-tablet {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Leaderboard arena stats — 3 cols on tablet */
+  .arena-stats-bento {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* Admin grid stays single col until wide enough */
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Profile stats — 2 cols on tablet */
+  .profile-stats-grid-tablet {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Navbar center — reduce link padding slightly */
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 14px;
   }
 }
 
+/* ── Mobile (≤ 768px) ────────────────────────────────────────────── */
 @media (max-width: 768px) {
+
+  /* ─── CSS Variable overrides for mobile ─── */
+  :root {
+    --nav-height: 56px;
+  }
+
+  /* ─── NAVBAR ─── */
+  /* The navbar wraps to 2 rows: [logo | wallet] on top, [nav links] below */
   .navbar {
     height: auto !important;
-    min-height: var(--nav-height);
-    padding: 12px 16px !important;
+    min-height: 56px;
+    padding: 0 16px !important;
+    flex-direction: column;
+    align-items: stretch;
   }
-  
+
   .navbar-inner {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 12px !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 0 !important;
+    padding: 10px 0;
+    position: relative !important;
   }
-  
+
+  /* Logo stays on the left, wallet button on the right — same row */
+  .navbar-logo {
+    order: 1;
+  }
+
+  .navbar-right {
+    order: 2;
+    gap: 8px !important;
+  }
+
+  /* Nav links drop to a second row, centred */
   .navbar-center {
     position: static !important;
     transform: none !important;
-    width: 100%;
-    justify-content: center;
+    left: auto !important;
     order: 3;
+    width: 100%;
+    display: flex !important;
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 0 !important;
+    border-top: 1px solid rgba(223,219,207,0.07);
+    padding: 6px 0 8px;
   }
-  
-  .navbar-right {
-    order: 2;
+
+  .nav-link {
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+    white-space: nowrap;
   }
-  
-  .text-hero {
-    font-size: clamp(32px, 8vw, 48px) !important;
+
+  /* Shrink the logo text slightly */
+  .navbar-logo-text {
+    font-size: 16px !important;
   }
-  
-  .glass-card {
-    padding: 16px !important;
+
+  /* RainbowKit connect button — shrink on mobile */
+  [data-rk] button {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
   }
-  
-  main > div[style*="display: flex"] {
+
+  /* Profile pill — keep compact */
+  .profile-pill-name {
+    max-width: 80px !important;
+    font-size: 12px !important;
+  }
+
+  /* Navbar sweep glow — keep but reposition */
+  .navbar-sweep-glow {
+    top: 55px !important;
+  }
+
+  /* Wrong network banner — stack vertically */
+  .network-banner {
     flex-direction: column !important;
-    padding: 24px !important;
-    gap: 24px !important;
+    gap: 8px !important;
+    padding: 10px 16px !important;
+    text-align: center;
   }
-  
-  main > div > div[style*="width: 1px"] {
+
+  /* ─── LANDING PAGE ─── */
+  /* Main hero section uses inline styles — we target the CTA button via class */
+  .landing-cta-btn {
+    padding: 14px 32px !important;
+    font-size: 15px !important;
+    letter-spacing: 2px !important;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  /* Stats card on landing — stack the two columns vertically */
+  .landing-stats-card {
+    flex-direction: column !important;
+    padding: 24px 20px !important;
+    gap: 20px !important;
+  }
+
+  /* Vertical divider in stats card becomes horizontal */
+  .landing-stats-divider {
     width: 100% !important;
     height: 1px !important;
     margin: 0 !important;
     background: linear-gradient(90deg, transparent, rgba(223,219,207,0.3), transparent) !important;
   }
-  
+
+  /* ─── CALLS PAGE ─── */
+  /* Tab navigation — allow horizontal scroll on very small screens */
+  .calls-tab-nav {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100% !important;
+  }
+  .calls-tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Prediction card grid — single column */
   .prediction-grid {
     grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
-  
-  .arena-stats-bento {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  
-  .admin-grid {
+
+  /* Calls page main inline grid — override minmax to full-width */
+  .calls-main-grid {
     grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
-  
+
+  /* ─── PREDICTION CARD ─── */
+  /* Banner height — slightly shorter on mobile */
+  .prediction-card-banner {
+    height: 140px !important;
+  }
+
+  /* Card body — tighter padding */
+  .prediction-card-body {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+
+  /* YES / NO bet buttons — full width, larger tap targets */
+  .btn-stitch-yes,
+  .btn-stitch-no {
+    padding: 14px 8px !important;
+    font-size: 16px !important;
+    min-height: 48px;
+  }
+
+  .btn-yes,
+  .btn-no {
+    padding: 14px 8px !important;
+    font-size: 15px !important;
+    min-height: 48px;
+  }
+
+  /* Bet input — larger for touch */
+  .bet-input-field {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    padding: 12px 14px !important;
+    min-height: 44px;
+  }
+
   .bet-input-area {
-    padding: 8px !important;
+    padding: 12px !important;
+    gap: 10px !important;
   }
-  
-  .btn-lg {
-    padding: 12px 20px !important;
-    font-size: 14px !important;
+
+  /* Pool/timer row — allow wrapping */
+  .prediction-pool-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
   }
-  
-  .top3-grid {
-    grid-template-columns: 1fr !important;
+
+  /* ─── MODALS ─── */
+  .modal-overlay {
+    padding: 16px 12px !important;
+    align-items: flex-end !important; /* Sheet-style from bottom on mobile */
   }
-  
+
   .modal-box {
-    padding: 20px !important;
-    margin: 12px !important;
-    width: calc(100% - 24px) !important;
+    padding: 24px 20px 28px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important; /* Bottom sheet style */
+    max-height: 92vh !important;
   }
-  
+
+  .modal-title {
+    font-size: 18px !important;
+  }
+
+  /* ─── TOASTS ─── */
   .toast {
+    top: auto !important;
+    bottom: 16px !important;
     right: 12px !important;
     left: 12px !important;
     min-width: 0 !important;
     width: calc(100% - 24px) !important;
+    max-width: 100% !important;
   }
-  
-  .data-table th, .data-table td {
-    padding: 8px !important;
+
+  /* ─── INPUTS ─── */
+  /* Prevent iOS auto-zoom (must be ≥ 16px) */
+  .input,
+  .textarea,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    min-height: 44px; /* Minimum touch target */
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    font-size: 12px !important;
+  }
+
+  .btn-lg {
+    padding: 14px 24px !important;
+    font-size: 15px !important;
+  }
+
+  /* ─── LEADERBOARD PAGE ─── */
+  /* Arena stats — 2 columns on mobile */
+  .arena-stats-bento {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 40px !important;
+  }
+
+  /* Podium — full-width stack on mobile */
+  .podium-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Ranks 4-10 table — make horizontally scrollable */
+  .leaderboard-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px;
+  }
+
+  /* Leaderboard table header/rows — reduce columns for mobile */
+  .leaderboard-table-row {
+    grid-template-columns: 48px 1fr 100px !important; /* Drop WIN RATE col on mobile */
+  }
+
+  /* Hide PNL column label and value on small screens, show win rate */
+  .leaderboard-col-winrate {
+    display: none !important;
+  }
+
+  /* ─── PROFILE PAGE ─── */
+  /* Profile hero — stack avatar + info vertically */
+  .profile-hero-section {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 24px 20px !important;
+    gap: 20px !important;
+  }
+
+  /* Profile action buttons — horizontal row on mobile */
+  .profile-action-btns {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .profile-action-btns button,
+  .profile-action-btns a {
+    flex: 1 !important;
+    min-width: 100px !important;
+    justify-content: center !important;
+  }
+
+  /* Profile stats grid — 2 columns */
+  .profile-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Profile tabs — larger tap targets */
+  .profile-tab-btn {
+    font-size: 15px !important;
+    padding: 0 0 14px !important;
+  }
+
+  /* My Calls table — horizontally scrollable */
+  .my-calls-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    -webkit-transform: translateZ(0);
+    border-radius: 12px;
+  }
+
+  .my-calls-table {
+    min-width: 580px !important;
+  }
+
+  /* Wallet address pill — clamp width */
+  .wallet-address-pill {
+    max-width: 100% !important;
+    width: 100%;
+  }
+
+  /* ─── FAUCET PAGE ─── */
+  /* Balance cards — stack vertically */
+  .faucet-balance-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+
+  .faucet-balance-card {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+
+  /* Faucet cards — full width */
+  .faucet-step-card {
+    padding: 22px 18px !important;
+  }
+
+  /* ─── POLL TAB ─── */
+  /* Poll cards — reduce padding */
+  .poll-card {
+    padding: 16px !important;
+  }
+
+  /* Poll form inputs — larger for touch */
+  .poll-form-input {
+    font-size: 16px !important;
+    padding: 12px 14px !important;
+  }
+
+  /* ─── BADGES ─── */
+  .badge-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .badge-card {
+    padding: 16px !important;
+  }
+
+  .badge-icon {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 28px !important;
+  }
+
+  /* ─── TICKER ─── */
+  .ticker-item {
+    padding: 0 20px !important;
     font-size: 11px !important;
+  }
+
+  /* ─── TABLES (generic) ─── */
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* ─── STATUS PILLS ─── */
+  .status-pill {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+  }
+
+  /* ─── FOOTER ─── */
+  .footer-inner,
+  footer {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 16px !important;
+    padding: 20px 16px !important;
+  }
+
+  /* ─── EMPTY STATES ─── */
+  .empty-state {
+    padding: 40px 20px !important;
+  }
+
+  .empty-state-icon {
+    font-size: 40px !important;
+  }
+
+  /* ─── ADMIN PAGE ─── */
+  .admin-section {
+    padding: 16px !important;
+  }
+
+  .admin-prediction-actions {
+    flex-direction: column !important;
+  }
+
+  .admin-prediction-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }
 
+/* ── Small Mobile (≤ 480px) ─────────────────────────────────────── */
 @media (max-width: 480px) {
+
+  /* Nav links — tighter on very small screens */
   .nav-link {
-    font-size: 13px !important;
-    padding: 6px 8px !important;
+    font-size: 12px !important;
+    padding: 5px 7px !important;
   }
-  
+
+  /* ─── LANDING PAGE ─── */
+  /* Hero heading — use viewport units for very small phones */
+  .landing-hero-heading {
+    font-size: clamp(36px, 11vw, 52px) !important;
+    letter-spacing: -1px !important;
+  }
+
+  .landing-hero-sub {
+    font-size: clamp(15px, 4vw, 18px) !important;
+  }
+
+  .landing-cta-btn {
+    padding: 13px 24px !important;
+    font-size: 14px !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  /* Stats card on landing */
+  .landing-stats-card {
+    padding: 20px 16px !important;
+  }
+
+  /* ─── LEADERBOARD ─── */
+  /* Arena stats — single column on very small phones */
   .arena-stats-bento {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
-  
+
+  /* Podium cards — reduce padding */
+  .podium-card-inner {
+    padding: 28px 16px !important;
+  }
+
+  /* ─── PROFILE ─── */
+  /* Stats grid — 2 cols still fine */
+  .profile-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Profile hero avatar — smaller */
   .profile-avatar-lg {
-    width: 64px !important;
-    height: 64px !important;
-    font-size: 24px !important;
+    width: 80px !important;
+    height: 80px !important;
+    font-size: 28px !important;
   }
-  
+
+  /* ─── PREDICTION CARD ─── */
+  .prediction-card-banner {
+    height: 120px !important;
+  }
+
+  /* Pool total + timer — stack vertically on tiny screens */
+  .prediction-pool-timer-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* ─── BADGE GRID ─── */
+  .badge-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ─── FAUCET ─── */
+  .faucet-balance-card {
+    padding: 16px 14px !important;
+  }
+
+  /* Countdown display on faucet */
+  .faucet-countdown-val {
+    font-size: 18px !important;
+  }
+
+  /* ─── BUTTONS — ensure min tap targets ─── */
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+  }
+
+  /* ─── STATS ROW on landing/leaderboard ─── */
   .stats-row {
     gap: 16px !important;
+    flex-direction: column !important;
+  }
+
+  .stat-number {
+    font-size: 22px !important;
   }
 }

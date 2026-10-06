@@ -168,7 +168,7 @@ export default function LandingPage() {
 
         {/* Live Stats Row */}
         <div
-          className="glass-card"
+          className="glass-card landing-stats-card"
           style={{
             display: 'flex',
             gap: 0,
@@ -217,7 +217,7 @@ export default function LandingPage() {
           </div>
 
           {/* Vertical divider */}
-          <div style={{
+          <div className="landing-stats-divider" style={{
             width: 1,
             background: 'linear-gradient(180deg, transparent, rgba(223,219,207,0.3), transparent)',
             alignSelf: 'stretch',
