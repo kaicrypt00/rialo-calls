@@ -620,25 +620,31 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
 
 function DescriptionText({ text }) {
   const [expanded, setExpanded] = useState(false)
+  
+  if (!text) return null
   const isLong = text.length > 150 || text.split('\n').length > 3
   
   if (!isLong) return <>{text}</>
   
-  const display = expanded ? text : text.slice(0, 150).trim() + '...'
+  const display = expanded ? text : text.slice(0, 150).trim() + '... '
   
   return (
-    <>
+    <span>
       {display}
-      <button 
-        onClick={() => setExpanded(!expanded)} 
+      <span 
+        onClick={(e) => { e.preventDefault(); setExpanded(!expanded) }} 
         style={{ 
-          background: 'none', border: 'none', color: 'var(--accent-primary)', 
-          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '0 4px',
-          fontFamily: 'inherit'
+          color: '#DFDBCF', 
+          fontSize: 13, 
+          fontWeight: 600, 
+          cursor: 'pointer', 
+          textDecoration: 'underline',
+          marginLeft: expanded ? '8px' : '4px',
+          display: 'inline-block'
         }}
       >
         {expanded ? 'Show less' : 'Read more'}
-      </button>
-    </>
+      </span>
+    </span>
   )
 }
