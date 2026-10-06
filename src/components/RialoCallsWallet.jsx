@@ -25,6 +25,10 @@ const TX_TYPE_ICON = {
   refund: '↩',
   poll_submit: '💡',
   vote: '🗳',
+  deposit: '⬇️',
+  withdrawal: '⬆️',
+  profile_creation: '👤',
+  faucet: '💧',
 }
 
 export default function RialoCallsWallet() {
@@ -129,8 +133,8 @@ export default function RialoCallsWallet() {
 
       supabase.from('wallet_transactions').insert({
         wallet_address: sessionWallet.address.toLowerCase(),
-        type: 'refund',
-        label: `Sent ${sendAmount} ETH to ${truncateAddress(sendTo)}`,
+        type: 'withdrawal',
+        label: `Withdrew ${sendAmount} ETH to ${truncateAddress(sendTo)}`,
         tx_hash: txHash,
       }).then(() => {})
 

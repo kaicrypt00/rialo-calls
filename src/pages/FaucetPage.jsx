@@ -6,6 +6,7 @@ import { CONTRACT_ADDRESSES, RLO_ABI } from '../config/contracts'
 import toast from 'react-hot-toast'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
+import { supabase } from '../config/supabase'
 
 const publicClient = createPublicClient({ chain: sepolia, transport: http('https://ethereum-sepolia-rpc.publicnode.com') })
 
@@ -72,6 +73,15 @@ export default function FaucetPage() {
       })
       // Wait for the block to be mined before reading state
       await waitForReceipt(hash)
+
+      supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address.toLowerCase(),
+        type: 'faucet',
+        label: 'Claimed 1,000 RLO from Faucet',
+        tx_hash: hash,
+        amount: 1000
+      }).then(() => {})
+
       toast.success('1,000 RLO claimed!')
       setClaimed(true)
       setTimeout(() => setClaimed(false), 3000)

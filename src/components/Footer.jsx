@@ -1,7 +1,6 @@
 import React from 'react'
 
 const FOOTER_LINKS = [
-  { label: 'Rialo Calls', href: 'https://rialocalls.vercel.app' },
   { label: 'Rialo',    href: 'https://rialo.io/' },
   { label: 'Latch',    href: 'https://onlatch.com/' },
   { label: 'Rialo X',  href: 'https://x.com/RialoHQ' },

@@ -154,6 +154,13 @@ export default function MintProfileModal() {
       showConfirmed(hash)
       // Pass url directly — state setter setPfpUrl is async and would be stale here
       await saveProfileToSupabase(url)
+
+      supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address.toLowerCase(),
+        type: 'profile_creation',
+        label: `Minted Profile: ${name.trim()}`,
+        tx_hash: hash,
+      }).then(() => {})
     } catch (err) {
       // If profile already exists on-chain, refresh state and close gracefully
       const msg = err.shortMessage || err.message || ''
