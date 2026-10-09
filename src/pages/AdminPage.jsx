@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi'
+import { useAccount }       from 'wagmi'
+import { usePublicClient }  from 'wagmi'
 import { createPublicClient, http, parseEther } from 'viem'
 import { sepolia } from 'viem/chains'
 import { CONTRACT_ADDRESSES, BETTING_POOL_ABI, POLL_REGISTRY_ADDRESS, POLL_REGISTRY_ABI } from '../config/contracts'
 import { supabase } from '../config/supabase'
 import { useToast } from '../context/ToastContext'
+import { useSessionWallet } from '../context/SessionWalletContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { uploadToSupabase, formatRitualNum } from '../utils/format'
@@ -189,65 +191,20 @@ function CreatePredictionSection() {
   const [showTemplates, setShowTemplates] = useState(false)
 
   const publicClient = usePublicClient()
-  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract()
-  const { isSuccess, isError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash })
-  const [published, setPublished] = useState(false)
+  const { sessionWallet } = useSessionWallet()
+  const [isPending, setIsPending] = useState(false)
 
   useEffect(() => { fetchTemplates() }, [])
-
-  useEffect(() => {
-    if (writeError) showFailed(writeError)
-  }, [writeError])
 
   async function fetchTemplates() {
     const { data } = await supabase.from('templates').select('*').order('created_at', { ascending: false })
     setTemplates(data || [])
   }
 
-  if (isSuccess && txHash && !published) {
-    setPublished(true)
-    showConfirmed(txHash)
-    // Insert into predictions_display after tx confirms — must include on-chain ID
-    ;(async () => {
-      try {
-        // Wait for chain to index the new prediction
-        await new Promise(r => setTimeout(r, 3000))
-
-        // Read the new prediction ID from contract (totalPredictions = latest ID)
-        const newId = await publicClient.readContract({
-          address: CONTRACT_ADDRESSES.BETTING_POOL,
-          abi: BETTING_POOL_ABI,
-          functionName: 'totalPredictions',
-        })
-
-        // deadline: NOT NULL in schema — use far-future ISO for no_deadline
-        const YEAR_2099_ISO = '2099-01-01T00:00:00.000Z'
-        const { error: sbErr } = await supabase.from('predictions_display').insert({
-          id: Number(newId),   // on-chain prediction ID — required, not auto-generated
-          title: title.trim(),
-          description: desc.trim(),
-          banner_url: bannerUrl || '',
-          deadline: noDeadline ? YEAR_2099_ISO : new Date(deadline).toISOString(),
-          no_deadline: noDeadline,
-          status: 'open',
-          yes_pool: 0,
-          no_pool: 0,
-          category: category || 'community_calls',
-        })
-        if (sbErr) console.error('Supabase insert error:', sbErr.message)
-        resetForm()
-      } catch (e) {
-        console.error('Supabase insert error:', e)
-      }
-    })()
-  }
-
-  if (isError) showFailed(receiptError)
-
   function resetForm() {
     setTitle(''); setDesc(''); setBannerFile(null); setBannerPreview(null)
     setBannerUrl(''); setDeadline(''); setNoDeadline(false); setErrors({})
-    setCategory('community_calls'); setPublished(false)
+    setCategory('community_calls')
   }
 
   async function handleBannerChange(e) {
@@ -280,6 +237,7 @@ function CreatePredictionSection() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setErrors({})
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
     setUploading(true)
 
     try {
@@ -290,32 +248,69 @@ function CreatePredictionSection() {
         setBannerUrl(url)
       }
 
-      // Sepolia uses UNIX SECONDS for block timestamps (standard EVM behaviour)
       let chainNowSec
       try {
         const latestBlock = await publicClient.getBlock({ blockTag: 'latest' })
-        chainNowSec = BigInt(latestBlock.timestamp) // already in seconds on Sepolia
+        chainNowSec = BigInt(latestBlock.timestamp)
       } catch {
         chainNowSec = BigInt(Math.floor(Date.now() / 1000))
       }
 
       const SEC_30_DAYS  = BigInt(30 * 24 * 3600)
       const SEC_75_YEARS = BigInt(75 * 365 * 24 * 3600)
-
-      // no-deadline = 75 chain-years ahead; real deadline = 30 chain-days (admin locks manually)
-      const contractDeadline = noDeadline ? chainNowSec + SEC_75_YEARS : chainNowSec + SEC_30_DAYS
+      const contractDeadline = noDeadline
+        ? chainNowSec + SEC_75_YEARS
+        : chainNowSec + SEC_30_DAYS
 
       showPending('Publishing prediction...')
-      writeContract({
+      setIsPending(true)
+
+      const txHash = await sessionWallet.client.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'createPrediction',
         args: [title.trim(), desc.trim(), url, contractDeadline],
       })
+
+      showConfirmed(txHash)
+
+      // Log to wallet_transactions
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Created prediction: ${title.trim().slice(0, 60)}${title.trim().length > 60 ? '...' : ''}`,
+        tx_hash: txHash,
+      })
+
+      // Wait briefly then read new prediction ID from contract
+      await new Promise(r => setTimeout(r, 3000))
+      const newId = await publicClient.readContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'totalPredictions',
+      })
+
+      const YEAR_2099_ISO = '2099-01-01T00:00:00.000Z'
+      const { error: sbErr } = await supabase.from('predictions_display').insert({
+        id: Number(newId),
+        title: title.trim(),
+        description: desc.trim(),
+        banner_url: url || '',
+        deadline: noDeadline ? YEAR_2099_ISO : new Date(deadline).toISOString(),
+        no_deadline: noDeadline,
+        status: 'open',
+        yes_pool: 0,
+        no_pool: 0,
+        category: category || 'community_calls',
+      })
+      if (sbErr) console.error('Supabase insert error:', sbErr.message)
+
+      resetForm()
     } catch (err) {
       showFailed(err)
     } finally {
       setUploading(false)
+      setIsPending(false)
     }
   }
 
@@ -544,11 +539,8 @@ function ManagePredictionsSection() {
   const [declareModal, setDeclareModal] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
 
-  const { writeContract, data: txHash, isPending } = useWriteContract()
-  const { isSuccess, isError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash })
-
-  // C3 fix: guard so handleTxSuccess only runs once per confirmed tx hash
-  const handledTxRef = useRef(null)
+  const { sessionWallet } = useSessionWallet()
+  const [isBusyLocal, setIsBusyLocal] = useState(false)
 
   const [activeTab, setActiveTab] = useState('active')
 
@@ -569,25 +561,6 @@ function ManagePredictionsSection() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  const [forceRemoveId, setForceRemoveId] = useState(null)
-
-  useEffect(() => {
-    if (isSuccess && txHash && handledTxRef.current !== txHash) {
-      handledTxRef.current = txHash
-      showConfirmed(txHash)
-      handleTxSuccess()
-    }
-    if (isError) {
-      showFailed(receiptError)
-      // If the error is 'prediction not found', offer force DB removal
-      const msg = receiptError?.message || receiptError?.toString() || ''
-      if (msg.toLowerCase().includes('prediction not found') && activePredId) {
-        setForceRemoveId(activePredId)
-      }
-      setActivePredId(null); setActiveAction(null)
-    }
-  }, [isSuccess, isError])
-
   async function fetchPredictions() {
     setLoading(true)
     const statuses = activeTab === 'active' ? ['open', 'locked'] : ['yes_wins', 'no_wins']
@@ -600,51 +573,116 @@ function ManagePredictionsSection() {
     setLoading(false)
   }
 
-  async function handleTxSuccess() {
-    // Update Supabase after contract confirms
-    if (activeAction === 'lock' && activePredId) {
-      await supabase.from('predictions_display').update({ status: 'locked' }).eq('id', activePredId)
+  async function doLock(pred) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    setActivePredId(pred.id); setActiveAction('lock'); setLockModal(null)
+    setIsBusyLocal(true)
+    showPending('Locking betting...')
+    try {
+      const txHash = await sessionWallet.client.writeContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'lockBetting',
+        args: [BigInt(pred.id)],
+      })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Locked prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
+        tx_hash: txHash,
+      })
+      await supabase.from('predictions_display').update({ status: 'locked' }).eq('id', pred.id)
+      fetchPredictions()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setActivePredId(null); setActiveAction(null); setIsBusyLocal(false)
     }
-    if (activeAction === 'unlock' && activePredId) {
-      await supabase.from('predictions_display').update({ status: 'open' }).eq('id', activePredId)
+  }
+
+  async function doUnlock(pred) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    setActivePredId(pred.id); setActiveAction('unlock')
+    setIsBusyLocal(true)
+    showPending('Unlocking betting...')
+    try {
+      const txHash = await sessionWallet.client.writeContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'unlockBetting',
+        args: [BigInt(pred.id)],
+      })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Unlocked prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
+        tx_hash: txHash,
+      })
+      await supabase.from('predictions_display').update({ status: 'open' }).eq('id', pred.id)
+      fetchPredictions()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setActivePredId(null); setActiveAction(null); setIsBusyLocal(false)
     }
-    if (activeAction === 'declare' && activePredId && activeWinnerSide) {
-      const winner = activeWinnerSide
+  }
+
+  async function doDeclare(pred, side) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    const sideLabel = side === 1 ? 'YES' : 'NO'
+    setActivePredId(pred.id); setActiveAction('declare')
+    setActiveWinnerSide(sideLabel); setDeclareModal(null)
+    setIsBusyLocal(true)
+    showPending('Declaring winner...')
+    try {
+      const txHash = await sessionWallet.client.writeContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'declareWinner',
+        args: [BigInt(pred.id), side],
+      })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Declared winner ${sideLabel} on #${pred.id}: ${pred.title.slice(0, 50)}`,
+        tx_hash: txHash,
+      })
+
+      // Update predictions_display
       await supabase.from('predictions_display').update({
-        status: winner === 'YES' ? 'yes_wins' : 'no_wins',
-        winner,
+        status: sideLabel === 'YES' ? 'yes_wins' : 'no_wins',
+        winner: sideLabel,
         settled_at: new Date().toISOString(),
-      }).eq('id', activePredId)
-      // Update bets results
-      const losingSide = winner === 'YES' ? 'NO' : 'YES'
+      }).eq('id', pred.id)
+
+      // Update bet results
+      const losingSide = sideLabel === 'YES' ? 'NO' : 'YES'
       await supabase.from('bets').update({ result: 'lost' })
-        .eq('prediction_id', activePredId).eq('side', losingSide)
+        .eq('prediction_id', pred.id).eq('side', losingSide)
       await supabase.from('bets').update({ result: 'won' })
-        .eq('prediction_id', activePredId).eq('side', winner)
+        .eq('prediction_id', pred.id).eq('side', sideLabel)
 
-
-
-      // Fetch all bets for this prediction to calculate pools and update leaderboard
+      // Update leaderboard
       try {
         const [{ data: loserBets }, { data: winnerBets }] = await Promise.all([
           supabase.from('bets').select('wallet_address, amount')
-            .eq('prediction_id', activePredId).eq('side', losingSide),
+            .eq('prediction_id', pred.id).eq('side', losingSide),
           supabase.from('bets').select('wallet_address, amount')
-            .eq('prediction_id', activePredId).eq('side', winner),
+            .eq('prediction_id', pred.id).eq('side', sideLabel),
         ])
-
-        // Pool sizes calculated directly from bets — no extra DB query needed
         const winningPool = (winnerBets || []).reduce((s, b) => s + parseFloat(b.amount || 0), 0)
         const losingPool  = (loserBets  || []).reduce((s, b) => s + parseFloat(b.amount || 0), 0)
 
-        // Update LOSERS
         for (const lb of (loserBets || [])) {
           const { data: row } = await supabase.from('leaderboard')
             .select('wins, losses, total_pnl').eq('wallet_address', lb.wallet_address).single()
           if (row) {
-            const newLosses  = (row.losses || 0) + 1
-            const newWins    = row.wins || 0
-            const winRate    = (newWins + newLosses) > 0 ? (newWins / (newWins + newLosses)) * 100 : 0
+            const newLosses = (row.losses || 0) + 1
+            const newWins   = row.wins || 0
+            const winRate   = (newWins + newLosses) > 0 ? (newWins / (newWins + newLosses)) * 100 : 0
             await supabase.from('leaderboard').update({
               losses:    newLosses,
               total_pnl: parseFloat(((row.total_pnl || 0) - parseFloat(lb.amount || 0)).toFixed(8)),
@@ -652,17 +690,15 @@ function ManagePredictionsSection() {
             }).eq('wallet_address', lb.wallet_address)
           }
         }
-
-        // Update WINNERS
         for (const wb of (winnerBets || [])) {
           const betAmt = parseFloat(wb.amount || 0)
           const profit = winningPool > 0 ? (betAmt / winningPool) * losingPool : 0
           const { data: row } = await supabase.from('leaderboard')
             .select('wins, losses, total_pnl').eq('wallet_address', wb.wallet_address).single()
           if (row) {
-            const newWins  = (row.wins || 0) + 1
+            const newWins   = (row.wins || 0) + 1
             const newLosses = row.losses || 0
-            const winRate  = (newWins + newLosses) > 0 ? (newWins / (newWins + newLosses)) * 100 : 0
+            const winRate   = (newWins + newLosses) > 0 ? (newWins / (newWins + newLosses)) * 100 : 0
             await supabase.from('leaderboard').update({
               wins:      newWins,
               total_pnl: parseFloat(((row.total_pnl || 0) + profit).toFixed(8)),
@@ -673,96 +709,86 @@ function ManagePredictionsSection() {
       } catch (err) {
         console.error('Leaderboard update after declare failed:', err)
       }
+
+      fetchPredictions()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setActivePredId(null); setActiveAction(null)
+      setActiveWinnerSide(null); setIsBusyLocal(false)
     }
-    if (activeAction === 'delete' && activePredId) {
-      const { data: pred } = await supabase.from('predictions_display').select('banner_url').eq('id', activePredId).single()
-      if (pred?.banner_url) {
-        const parts = pred.banner_url.split('/banners/')
-        if (parts.length > 1) await supabase.storage.from('banners').remove([parts[1]])
-      }
-      await supabase.from('predictions_display').delete().eq('id', activePredId)
-      await supabase.from('bets').delete().eq('prediction_id', activePredId)
-    }
-    if (activeAction === 'extend' && activePredId && extendModal) {
-      await supabase.from('predictions_display').update({
-        deadline: new Date(extendModal.newDeadline).toISOString()
-      }).eq('id', activePredId)
-    }
-
-    setActivePredId(null); setActiveAction(null)
-    setExtendModal(null); setLockModal(null); setDeclareModal(null); setDeleteModal(null)
-    fetchPredictions()
   }
 
-  function doLock(pred) {
-    setActivePredId(pred.id); setActiveAction('lock')
-    setLockModal(null)
-    showPending('Locking betting...')
-    writeContract({
-      address: CONTRACT_ADDRESSES.BETTING_POOL,
-      abi: BETTING_POOL_ABI,
-      functionName: 'lockBetting',
-      args: [BigInt(pred.id)],
-      gas: 150000n,
-    })
-  }
-
-  function doUnlock(pred) {
-    setActivePredId(pred.id); setActiveAction('unlock')
-    showPending('Unlocking betting...')
-    writeContract({
-      address: CONTRACT_ADDRESSES.BETTING_POOL,
-      abi: BETTING_POOL_ABI,
-      functionName: 'unlockBetting',
-      args: [BigInt(pred.id)],
-      gas: 150000n,
-    })
-  }
-
-  function doDeclare(pred, side) {
-    setActivePredId(pred.id); setActiveAction('declare')
-    setActiveWinnerSide(side === 1 ? 'YES' : 'NO')
-    setDeclareModal(null)
-    showPending('Declaring winner...')
-    // Sepolia BettingPool: no ETH fee required for declareWinner
-    writeContract({
-      address: CONTRACT_ADDRESSES.BETTING_POOL,
-      abi: BETTING_POOL_ABI,
-      functionName: 'declareWinner',
-      args: [BigInt(pred.id), side],
-      gas: 200000n,
-    })
-  }
-
-  function doExtend(pred, newDeadline) {
+  async function doExtend(pred, newDeadline) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
     setActivePredId(pred.id); setActiveAction('extend')
     setExtendModal({ ...extendModal, newDeadline })
+    setIsBusyLocal(true)
     showPending('Extending deadline...')
-    // Sepolia uses Unix seconds for timestamps
     const deadlineSec = BigInt(Math.floor(new Date(newDeadline).getTime() / 1000))
-    writeContract({
-      address: CONTRACT_ADDRESSES.BETTING_POOL,
-      abi: BETTING_POOL_ABI,
-      functionName: 'extendDeadline',
-      args: [BigInt(pred.id), deadlineSec],
-      gas: 150000n,
-    })
+    try {
+      const txHash = await sessionWallet.client.writeContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'extendDeadline',
+        args: [BigInt(pred.id), deadlineSec],
+      })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Extended deadline on #${pred.id} to ${new Date(newDeadline).toLocaleDateString()}`,
+        tx_hash: txHash,
+      })
+      await supabase.from('predictions_display').update({
+        deadline: new Date(newDeadline).toISOString(),
+      }).eq('id', pred.id)
+      setExtendModal(null)
+      fetchPredictions()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setActivePredId(null); setActiveAction(null); setIsBusyLocal(false)
+    }
   }
 
-  function doDelete(pred) {
-    setActivePredId(pred.id); setActiveAction('delete')
-    setDeleteModal(null)
+  async function doDelete(pred) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    setActivePredId(pred.id); setActiveAction('delete'); setDeleteModal(null)
+    setIsBusyLocal(true)
     showPending('Deleting prediction...')
-    writeContract({
-      address: CONTRACT_ADDRESSES.BETTING_POOL,
-      abi: BETTING_POOL_ABI,
-      functionName: 'deletePrediction',
-      args: [BigInt(pred.id)],
-      gas: 150000n,
-    })
+    try {
+      const txHash = await sessionWallet.client.writeContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'deletePrediction',
+        args: [BigInt(pred.id)],
+      })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Deleted prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
+        tx_hash: txHash,
+      })
+      // Clean up Supabase
+      const { data: p } = await supabase.from('predictions_display')
+        .select('banner_url').eq('id', pred.id).single()
+      if (p?.banner_url) {
+        const parts = p.banner_url.split('/banners/')
+        if (parts.length > 1) await supabase.storage.from('banners').remove([parts[1]])
+      }
+      await supabase.from('predictions_display').delete().eq('id', pred.id)
+      await supabase.from('bets').delete().eq('prediction_id', pred.id)
+      fetchPredictions()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setActivePredId(null); setActiveAction(null); setIsBusyLocal(false)
+    }
   }
 
-  const isBusy = isPending
+  const isBusy = isBusyLocal
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1020,10 +1046,6 @@ function ManagePredictionsSection() {
               <button
                 className="btn btn-danger" style={{ flex: 1 }}
                 onClick={() => {
-                  // C2 fix: Do NOT delete from Supabase here.
-                  // handleTxSuccess() is the single source of truth for all DB changes.
-                  // For settled predictions (yes_wins/no_wins), skip the blockchain call
-                  // and let handleTxSuccess handle the Supabase-only cleanup.
                   if (deleteModal.status === 'yes_wins' || deleteModal.status === 'no_wins') {
                     // Settled predictions can't be deleted on-chain — DB-only removal
                     ;(async () => {
@@ -1039,10 +1061,8 @@ function ManagePredictionsSection() {
                       fetchPredictions()
                     })()
                   } else {
-                    // Active prediction: only fire the blockchain tx.
-                    // handleTxSuccess will delete from Supabase after confirmation.
+                    // Active prediction: fire on-chain tx via session wallet
                     doDelete(deleteModal)
-                    setDeleteModal(null)
                   }
                 }}
                 disabled={isBusy}
@@ -1055,35 +1075,7 @@ function ManagePredictionsSection() {
         </AdminModal>
       )}
 
-      {/* Force Remove modal — shown when contract reverts with 'prediction not found' */}
-      {forceRemoveId && (
-        <AdminModal title="On-Chain Prediction Not Found" onClose={() => setForceRemoveId(null)}>
-          <div style={{
-            background: 'rgba(224,85,85,0.08)', border: '1px solid rgba(224,85,85,0.2)',
-            borderRadius: 8, padding: 14, fontSize: 13, color: 'var(--danger)', marginBottom: 16,
-          }}>
-            The contract returned <strong>"prediction not found"</strong> for ID <code style={{ fontFamily: 'var(--font-mono)' }}>{forceRemoveId}</code>.
-            <br /><br />
-            This means the prediction was already deleted on-chain (possibly a duplicate that was cleaned up), but the Supabase record still exists.
-            You can safely remove it from the database.
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              className="btn btn-danger"
-              style={{ flex: 1 }}
-              onClick={async () => {
-                await supabase.from('predictions_display').update({ status: 'deleted' }).eq('id', forceRemoveId)
-                await supabase.from('bets').update({ result: 'refunded' }).eq('prediction_id', forceRemoveId)
-                setForceRemoveId(null)
-                fetchPredictions()
-              }}
-            >
-              Remove Orphaned Record from DB
-            </button>
-            <button className="btn btn-ghost" onClick={() => setForceRemoveId(null)}>Dismiss</button>
-          </div>
-        </AdminModal>
-      )}
+
     </div>
   )
 }
@@ -1158,7 +1150,7 @@ function TemplatesInlineSection() {
 // ============================================================
 function AdminPollsTab() {
   const { showConfirmed, showFailed } = useToast()
-  const { writeContractAsync } = useWriteContract()
+  const { sessionWallet } = useSessionWallet()
   const [polls, setPolls]       = useState([])
   const [history, setHistory]   = useState([])
   const [selected, setSelected] = useState(new Set())
@@ -1220,16 +1212,23 @@ function AdminPollsTab() {
   }
 
   async function handleDelete(pollId) {
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
     try {
-      await writeContractAsync({
+      const txHash = await sessionWallet.client.writeContract({
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'deletePoll',
         args: [pollId],
       })
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Deleted poll #${String(pollId)}`,
+        tx_hash: txHash,
+      })
       setPolls(prev => prev.filter(p => String(p.id) !== String(pollId)))
       setSelected(prev => { const next = new Set(prev); next.delete(String(pollId)); return next })
-      showConfirmed('Poll deleted on-chain')
     } catch (e) {
       showFailed(e)
     }
@@ -1237,16 +1236,24 @@ function AdminPollsTab() {
 
   async function handleCloseRound() {
     if (selected.size !== 3) return
+    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
     const winnerIds = [...selected].map(id => BigInt(id))
     setClosing(true)
+    showPending('Closing round...')
     try {
-      await writeContractAsync({
+      const txHash = await sessionWallet.client.writeContract({
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'closeRound',
         args: [[winnerIds[0], winnerIds[1], winnerIds[2]]],
       })
-      showConfirmed(`Round ${currentRound} closed. Winners saved on-chain.`)
+      showConfirmed(txHash)
+      await supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address,
+        type: 'admin_action',
+        label: `Closed poll round #${currentRound} — winners selected`,
+        tx_hash: txHash,
+      })
       setSelected(new Set())
       await loadAll()
     } catch (e) {

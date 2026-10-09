@@ -29,6 +29,7 @@ const TX_TYPE_ICON = {
   withdrawal: '⬆️',
   profile_creation: '👤',
   faucet: '💧',
+  admin_action: '⚙',
 }
 
 export default function RialoCallsWallet() {
