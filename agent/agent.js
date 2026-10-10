@@ -235,34 +235,43 @@ async function askAI(market) {
     `Based on your knowledge, will this resolve YES or NO?\n` +
     `Respond with exactly one word: YES or NO`
 
-  const response = await fetch('https://onlatch.com/proxy/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LATCH_TOKEN}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://rialocalls.vercel.app',
-      'X-Title': 'RialoBot',
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-3.1-8b-instruct:free',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 10,
-      temperature: 0.2,
-    }),
-  })
+  try {
+    const response = await fetch('https://onlatch.com/proxy/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LATCH_TOKEN}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://rialocalls.vercel.app',
+        'X-Title': 'RialoBot',
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-3.1-8b-instruct:free',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 10,
+        temperature: 0.2,
+      }),
+    })
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '')
-    throw new Error(`Latch/OpenRouter error ${response.status}: ${body.slice(0, 200)}`)
+    if (response.ok) {
+      const json   = await response.json()
+      const answer = (json.choices?.[0]?.message?.content || '').trim().toUpperCase()
+
+      if (answer === 'YES' || answer.startsWith('YES')) return 'YES'
+      if (answer === 'NO'  || answer.startsWith('NO'))  return 'NO'
+      console.warn(`⚠️ AI responded "${answer}". Using heuristic fallback.`)
+    } else {
+      const errText = await response.text().catch(() => '')
+      console.warn(`⚠️ Latch notice (${response.status}): ${errText.slice(0, 150)}. Using market heuristic fallback.`)
+    }
+  } catch (err) {
+    console.warn(`⚠️ Latch fetch failed (${err.message}). Using market heuristic fallback.`)
   }
 
-  const json   = await response.json()
-  const answer = (json.choices?.[0]?.message?.content || '').trim().toUpperCase()
-
-  if (answer === 'YES' || answer.startsWith('YES')) return 'YES'
-  if (answer === 'NO'  || answer.startsWith('NO'))  return 'NO'
-
-  console.warn(`⚠️ AI responded "${answer}" (unexpected). Using random fallback.`)
+  // Resilient heuristic fallback: bet with the crowd if clear trend, otherwise random
+  const yp = parseFloat(market.yes_pool || 0)
+  const np = parseFloat(market.no_pool  || 0)
+  if (yp > np * 1.3) return 'YES'
+  if (np > yp * 1.3) return 'NO'
   return Math.random() > 0.5 ? 'YES' : 'NO'
 }
 
