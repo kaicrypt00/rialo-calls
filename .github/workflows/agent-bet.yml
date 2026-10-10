@@ -1,10 +1,10 @@
-﻿name: RialoBot - Daily Bets
+name: RialoBot - Daily Bets
 
 on:
   schedule:
     # 8:00 AM UTC every day
     - cron: '0 8 * * *'
-  # Manual trigger: GitHub repo → Actions tab → "RialoBot - Daily Bets" → "Run workflow"
+  # Manual trigger: GitHub repo ? Actions tab ? "RialoBot - Daily Bets" ? "Run workflow"
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: 'agent/package.json'
 
