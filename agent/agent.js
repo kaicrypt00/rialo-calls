@@ -1,4 +1,4 @@
-﻿// agent/agent.js
+// agent/agent.js
 // RialoBot — Daily AI Betting Agent
 // Triggered by GitHub Actions at 8AM UTC daily.
 // Places 1 AI-decided bet per day on an open prediction market.
@@ -334,7 +334,7 @@ async function recordBetInSupabase(market, decision, txHash) {
     await supabase.from('leaderboard').insert({
       wallet_address: wallet,
       name:           'Rialo Agent 001',
-      pfp_url:        'https://api.dicebear.com/7.x/bottts/svg?seed=rialobot',
+      pfp_url:        'https://ftpweltnuwhwtqteydgi.supabase.co/storage/v1/object/public/avatars/agent-001.jpg',
       total_calls:    1,
       wins:           0,
       losses:         0,

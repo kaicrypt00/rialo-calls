@@ -1,4 +1,4 @@
-﻿// agent/setup.js
+// agent/setup.js
 // Run ONCE via GitHub Actions (workflow: agent-setup.yml → "Run workflow" button)
 // Creates RialoBot's on-chain profile and Supabase records.
 // The agent wallet address becomes the permanent identity for all data.
@@ -14,11 +14,17 @@ const AGENT_PRIVATE_KEY    = process.env.AGENT_PRIVATE_KEY
 const SUPABASE_URL         = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 // ─── AGENT PROFILE DETAILS ───────────────────────────────────────────────────
 const AGENT_NAME       = 'Rialo Agent 001'
 const AGENT_BIO        = 'AI prediction market trader powered by Latch.'
 const AGENT_X_USERNAME = 'rialoagent001'
-const AGENT_PFP_URL    = 'https://api.dicebear.com/7.x/bottts/svg?seed=rialobot'
+const AGENT_PFP_URL    = 'https://ftpweltnuwhwtqteydgi.supabase.co/storage/v1/object/public/avatars/agent-001.jpg'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PROFILE_REGISTRY = '0x2DE1Ed07C104E775aE7368b1B8e2AA669b5CE5C8'
@@ -69,6 +75,31 @@ console.log()
 async function main() {
   const wallet = account.address.toLowerCase()
 
+  // ── STEP 0: Sync agent avatar to Supabase storage ──────────────────────
+  let pfpUrl = AGENT_PFP_URL
+  const localPfpPath = path.join(__dirname, 'agent-pfp.jpg')
+  if (fs.existsSync(localPfpPath)) {
+    console.log('0/4 Syncing agent PFP to Supabase storage...')
+    try {
+      const fileBuffer = fs.readFileSync(localPfpPath)
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload('agent-001.jpg', fileBuffer, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        })
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl('agent-001.jpg')
+        if (urlData?.publicUrl) pfpUrl = urlData.publicUrl
+        console.log(`   ✓ Avatar uploaded: ${pfpUrl}`)
+      } else {
+        console.warn(`   ⚠️ Avatar upload notice: ${uploadErr.message}`)
+      }
+    } catch (e) {
+      console.warn(`   ⚠️ Local avatar sync notice: ${e.message}`)
+    }
+  }
+
   // ── STEP 1: Check if already minted on-chain ──────────────────────────────
   console.log('1/4 Checking on-chain profile status...')
   const alreadyMinted = await publicClient.readContract({
@@ -99,9 +130,9 @@ async function main() {
       address: PROFILE_REGISTRY,
       abi: PROFILE_REGISTRY_ABI,
       functionName: 'mintProfile',
-      args: [AGENT_NAME, AGENT_BIO, '', AGENT_X_USERNAME],
+      args: [AGENT_NAME, AGENT_BIO, pfpUrl, AGENT_X_USERNAME],
       value: mintFee,
-      gas: 300000n,
+      gas: 350000n,
     })
     console.log(`   Waiting for confirmation...`)
     await publicClient.waitForTransactionReceipt({ hash: txHash })
@@ -115,7 +146,7 @@ async function main() {
     wallet_address: wallet,
     name:           AGENT_NAME,
     bio:            AGENT_BIO,
-    pfp_url:        AGENT_PFP_URL,
+    pfp_url:        pfpUrl,
     x_username:     AGENT_X_USERNAME,
     minted_at:      new Date().toISOString(),
   }, { onConflict: 'wallet_address' })
@@ -131,7 +162,7 @@ async function main() {
   const { error: lbError } = await supabase.from('leaderboard').upsert({
     wallet_address: wallet,
     name:           AGENT_NAME,
-    pfp_url:        AGENT_PFP_URL,
+    pfp_url:        pfpUrl,
     total_calls:    0,
     wins:           0,
     losses:         0,
