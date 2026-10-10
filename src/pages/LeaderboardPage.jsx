@@ -467,7 +467,7 @@ function PodiumCard({ caller, rank, isFirst }) {
         color:      s.color,
         marginBottom: 4,
       }}>
-        {caller.name || shortAddress(caller.wallet_address)}
+        {caller.name || shortAddress(caller.wallet_address)}{caller.is_agent && ' 🤖'}
       </div>
 
       {/* Win rate */}
@@ -580,7 +580,7 @@ function TableRow({ caller, rank }) {
             fontSize: 15,
             color: 'var(--text-primary)',
           }}>
-            {caller.name || shortAddress(caller.wallet_address)}
+            {caller.name || shortAddress(caller.wallet_address)}{caller.is_agent && ' 🤖'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)' }}>
             {caller.total_calls ?? 0} calls

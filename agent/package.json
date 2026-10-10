@@ -1,0 +1,18 @@
+{
+  "name": "rialocalls-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "RialoBot AI trading agent for Rialo Calls",
+  "scripts": {
+    "setup": "node setup.js",
+    "bet": "node agent.js",
+    "claim": "node claim.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.1",
+    "viem": "^2.55.11"
+  },
+  "devDependencies": {
+    "libsodium-wrappers": "^0.8.4"
+  }
+}
