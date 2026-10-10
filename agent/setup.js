@@ -132,10 +132,13 @@ async function main() {
       functionName: 'mintProfile',
       args: [AGENT_NAME, AGENT_BIO, pfpUrl, AGENT_X_USERNAME],
       value: mintFee,
-      gas: 350000n,
+      gas: 1800000n,
     })
     console.log(`   Waiting for confirmation...`)
-    await publicClient.waitForTransactionReceipt({ hash: txHash })
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+    if (receipt.status === 'reverted') {
+      throw new Error(`Minting transaction reverted on-chain. Tx: ${txHash}`)
+    }
     console.log(`   ✓ Minted! Tx: ${txHash}`)
     console.log(`   View: https://sepolia.etherscan.io/tx/${txHash}`)
   }
