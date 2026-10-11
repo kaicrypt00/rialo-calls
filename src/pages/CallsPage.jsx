@@ -6,6 +6,7 @@ import PredictionCard from '../components/PredictionCard'
 import PollTab from '../components/PollTab'
 import Footer from '../components/Footer'
 import ErrorBoundary from '../components/ErrorBoundary'
+import MusicToggleButton from '../components/MusicToggleButton'
 
 const TABS = [
   { id: 'all_calls',       label: 'All Calls' },
@@ -119,16 +120,25 @@ export default function CallsPage() {
         flex: 1,
         width: '100%',
       }}>
-        {/* Page heading */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Page heading & sound toggle */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          width: '100%',
+        }}>
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: 'clamp(24px, 4vw, 36px)',
             fontWeight: 700,
             color: 'var(--text-primary)',
+            margin: 0,
           }}>
             {activeTab === 'polls' ? 'The Poll' : 'Active Calls'}
           </h1>
+
+          <MusicToggleButton />
         </div>
 
         {/* Tab navigation */}
