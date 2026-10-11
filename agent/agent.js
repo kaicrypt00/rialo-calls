@@ -235,39 +235,56 @@ async function askAI(market) {
     `Based on your knowledge, will this resolve YES or NO?\n` +
     `Respond with exactly one word: YES or NO`
 
-  try {
-    const response = await fetch('https://onlatch.com/proxy/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LATCH_TOKEN}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://rialocalls.vercel.app',
-        'X-Title': 'RialoBot',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3.1-8b-instruct:free',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 10,
-        temperature: 0.2,
-      }),
-    })
+  // ─── LATCH MODEL ALLOWLIST (in exact priority order) ────────────────────────
+  const MODELS = [
+    'mistralai/mistral-7b-instruct:free',
+    'meta-llama/llama-3.2-3b-instruct:free',
+    'qwen/qwen-2.5-7b-instruct:free',
+    'google/gemma-3-4b-it:free',
+  ]
 
-    if (response.ok) {
-      const json   = await response.json()
-      const answer = (json.choices?.[0]?.message?.content || '').trim().toUpperCase()
+  for (const model of MODELS) {
+    try {
+      const response = await fetch('https://onlatch.com/proxy/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LATCH_TOKEN}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://rialocalls.vercel.app',
+          'X-Title': 'RialoBot',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 10,
+          temperature: 0.2,
+        }),
+      })
 
-      if (answer === 'YES' || answer.startsWith('YES')) return 'YES'
-      if (answer === 'NO'  || answer.startsWith('NO'))  return 'NO'
-      console.warn(`⚠️ AI responded "${answer}". Using heuristic fallback.`)
-    } else {
-      const errText = await response.text().catch(() => '')
-      console.warn(`⚠️ Latch notice (${response.status}): ${errText.slice(0, 150)}. Using market heuristic fallback.`)
+      if (response.ok) {
+        const json   = await response.json()
+        const answer = (json.choices?.[0]?.message?.content || '').trim().toUpperCase()
+
+        if (answer === 'YES' || answer.startsWith('YES')) {
+          console.log(`🤖 AI decision from ${model}: YES`)
+          return 'YES'
+        }
+        if (answer === 'NO'  || answer.startsWith('NO')) {
+          console.log(`🤖 AI decision from ${model}: NO`)
+          return 'NO'
+        }
+        console.warn(`⚠️ AI model ${model} responded "${answer}". Trying next fallback model.`)
+      } else {
+        const errText = await response.text().catch(() => '')
+        console.warn(`⚠️ Latch notice for ${model} (${response.status}): ${errText.slice(0, 150)}. Trying next model.`)
+      }
+    } catch (err) {
+      console.warn(`⚠️ Latch fetch failed for ${model} (${err.message}). Trying next model.`)
     }
-  } catch (err) {
-    console.warn(`⚠️ Latch fetch failed (${err.message}). Using market heuristic fallback.`)
   }
 
   // Resilient heuristic fallback: bet with the crowd if clear trend, otherwise random
+  console.log('📊 All Latch models exhausted or unavailable. Using market heuristic fallback.')
   const yp = parseFloat(market.yes_pool || 0)
   const np = parseFloat(market.no_pool  || 0)
   if (yp > np * 1.3) return 'YES'
