@@ -11,6 +11,7 @@ import { useSessionWallet } from '../context/SessionWalletContext'
 import { formatRitual, formatCountdown, calcOdds, validateBetAmount } from '../utils/format'
 import { EXPLORER_URL } from '../config/wagmi'
 import { Link } from 'react-router-dom'
+import { useSound } from '../context/SoundContext'
 
 const publicClient = createPublicClient({
   chain: sepolia,
@@ -23,6 +24,7 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
   const { navState, setShowMintModal } = useProfile()
   const { sessionWallet, hasSessionWallet, createSessionWallet, isCreating, loadBalances } = useSessionWallet()
   const { showPending, showConfirmed, showFailed } = useToast()
+  const { playClaimSound } = useSound()
 
   const [betSide, setBetSide]     = useState(null)
   const [betAmount, setBetAmount] = useState('')
@@ -197,6 +199,7 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
   // ─── CLAIM WINNINGS via Session Wallet ──────────────────────────────────────
   async function handleClaim() {
     if (!sessionWallet) return
+    playClaimSound()
     setClaimPending(true)
     try {
       showPending('Claiming your winnings...')

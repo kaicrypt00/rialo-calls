@@ -2323,3 +2323,66 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 22px !important;
   }
 }
+
+/* =====================================================================
+   Rialo Calls — Music & Audio Theme Styles
+   Cream Luxury Design (#DFDBCF accent, glassmorphism, equalizer waves)
+   ===================================================================== */
+.music-toggle-btn {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.music-toggle-btn.music-active {
+  background: linear-gradient(135deg, rgba(223, 219, 207, 0.16) 0%, rgba(223, 219, 207, 0.06) 100%);
+  border: 1px solid rgba(223, 219, 207, 0.35);
+  box-shadow: 0 0 16px rgba(223, 219, 207, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color: #DFDBCF;
+}
+
+.music-toggle-btn.music-active:hover {
+  background: linear-gradient(135deg, rgba(223, 219, 207, 0.22) 0%, rgba(223, 219, 207, 0.1) 100%);
+  border-color: rgba(223, 219, 207, 0.55);
+  box-shadow: 0 4px 22px rgba(223, 219, 207, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.music-toggle-btn.music-muted {
+  background: rgba(18, 18, 18, 0.75);
+  border: 1px solid rgba(223, 219, 207, 0.12);
+  color: rgba(223, 219, 207, 0.45);
+}
+
+.music-toggle-btn.music-muted:hover {
+  background: rgba(28, 28, 28, 0.85);
+  border-color: rgba(223, 219, 207, 0.25);
+  color: rgba(223, 219, 207, 0.75);
+  transform: translateY(-1px);
+}
+
+@keyframes sound-wave-1 {
+  0%, 100% { height: 4px; }
+  50% { height: 13px; }
+}
+
+@keyframes sound-wave-2 {
+  0%, 100% { height: 7px; }
+  50% { height: 16px; }
+}
+
+@keyframes sound-wave-3 {
+  0%, 100% { height: 5px; }
+  50% { height: 12px; }
+}
+
+@media (max-width: 540px) {
+  .music-toggle-btn {
+    padding: 0 10px !important;
+    height: 36px !important;
+    gap: 6px !important;
+  }
+  .music-toggle-btn .music-label {
+    display: none;
+  }
+}
+

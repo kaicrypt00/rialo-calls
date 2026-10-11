@@ -11,6 +11,7 @@ import { ToastProvider } from './context/ToastContext'
 import { ProfileProvider } from './context/ProfileContext'
 import { SessionWalletProvider } from './context/SessionWalletContext'
 import { DataPrefetchProvider } from './context/DataPrefetchContext'
+import { SoundProvider } from './context/SoundContext'
 import App from './App'
 
 const queryClient = new QueryClient({
@@ -46,7 +47,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <SessionWalletProvider>
                 <DataPrefetchProvider>
                   <ProfileProvider>
-                    <App />
+                    <SoundProvider>
+                      <App />
+                    </SoundProvider>
                   </ProfileProvider>
                 </DataPrefetchProvider>
               </SessionWalletProvider>

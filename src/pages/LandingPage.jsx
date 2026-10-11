@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount } from 'wagmi'
 import { supabase } from '../config/supabase'
+import MusicToggleButton from '../components/MusicToggleButton'
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -69,7 +70,10 @@ export default function LandingPage() {
             letterSpacing: -0.5,
           }}>Rialo Calls</span>
         </div>
-        <ConnectButton label="Connect Wallet" showBalance={false} chainStatus="none" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <MusicToggleButton />
+          <ConnectButton label="Connect Wallet" showBalance={false} chainStatus="none" />
+        </div>
       </nav>
 
 

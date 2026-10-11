@@ -12,6 +12,7 @@ import BadgesTab from '../components/BadgesTab'
 import { shortAddress, formatRitualNum, formatMonthYear, copyToClipboard, buildXShareUrl } from '../utils/format'
 import { EXPLORER_URL } from '../config/wagmi'
 import { CONTRACT_ADDRESSES, BETTING_POOL_ABI } from '../config/contracts'
+import { useSound } from '../context/SoundContext'
 
 const TABS = ['My Calls', 'Badges']
 const PAGE_SIZE = 20
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const { disconnect } = useDisconnect()
   const { profile, refreshProfile, profileLoading } = useProfile()
   const { sessionWallet, hasSessionWallet } = useSessionWallet()
+  const { playClaimSound } = useSound()
   const publicClient = usePublicClient()
 
   const [activeTab, setActiveTab] = useState(0)
@@ -127,6 +129,7 @@ export default function ProfilePage() {
 
   async function handleClaim(predictionId) {
     if (!sessionWallet) return
+    playClaimSound()
     setClaimingId(predictionId)
     setClaimPending(true)
     try {
