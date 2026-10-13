@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 import { useProfile } from './context/ProfileContext'
@@ -13,6 +13,8 @@ import FaucetPage from './pages/FaucetPage'
 import MintProfileModal from './components/MintProfileModal'
 import AppLoader from './components/AppLoader'
 import ParticleBackground from './components/ParticleBackground'
+
+const CallsGuide = lazy(() => import('./components/CallsGuide'))
 
 function AdminGuard({ children }) {
   const { address } = useAccount()
@@ -56,6 +58,10 @@ export default function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      <Suspense fallback={null}>
+        <CallsGuide />
+      </Suspense>
     </>
   )
 }
