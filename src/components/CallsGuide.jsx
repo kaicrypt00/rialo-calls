@@ -30,7 +30,7 @@ const BADGE_INFO = [
 function detectIntent(text) {
   const t = text.toLowerCase().trim()
 
-  // GREETING only fires when no action keywords are present — so "Hello I want to claim faucet" routes to FAUCET
+  // GREETING only fires when no action keywords are present
   const hasAction = /\b(faucet|claim|bet|badge|poll|balance|market|refund|rlo|winnings|collect)\b/.test(t)
   if (!hasAction && /\b(hi|hello|hey|sup|yo|gm|good morning|start|begin)\b/.test(t)) return 'GREETING'
   if (/\b(faucet|free rlo|get rlo|claim rlo|rlo faucet|daily|monthly rlo)\b/.test(t)) return 'FAUCET'
@@ -42,6 +42,14 @@ function detectIntent(text) {
   if (/\b(poll|polls|suggest|submit idea|vote|poll idea|community poll)\b/.test(t)) return 'POLL'
   if (/\b(balance|wallet|how much|my rlo|my eth|funds|tokens)\b/.test(t)) return 'BALANCE'
   if (/\b(markets|open markets|active|what.*bet|show me|list market|all market)\b/.test(t)) return 'MARKETS'
+  // X Resolver
+  if (/\b(x resolver|resolver|x monitor|twitter monitor|auto lock|auto.*resolve|auto.*bet|x account|monitor.*twitter|monitor.*x|fxtwitter|condition.*lock|lock.*condition|x.*condition)\b/.test(t)) return 'INFO_RESOLVER'
+  // Architecture / tech
+  if (/\b(architecture|tech stack|how.*built|how.*work|technical|contracts|supabase|viem|wagmi|sepolia|blockchain|on.?chain|smart contract|session wallet|how.*session|session.*key|private key.*session|how.*wallet.*work)\b/.test(t)) return 'INFO_ARCHITECTURE'
+  // Admin
+  if (/\b(admin|create.*prediction|manage.*prediction|declare.*winner|lock.*betting|admin.*panel|admin.*page|admin.*tab|who.*admin|admin.*wallet)\b/.test(t)) return 'INFO_ADMIN'
+  // Security
+  if (/\b(secure|security|safe|secrets|private key|leaked|exposed|github.*secret|is it safe|is.*secure|hack|vulnerable)\b/.test(t)) return 'INFO_SECURITY'
   if (/\b(novel|unique|different|special|innovative|standout|sets it apart|why.*use|why rialo calls|what makes.*special|what makes.*unique|what makes.*different|whats.*different|whats.*special|whats.*unique|how.*different|why.*different|key features?|main features?|best features?|cool features?|what.*doing|what.*built|what.*offer)\b/.test(t)) return 'INFO_NOVEL'
   if (/\b(future|roadmap|whats next|next plan|coming soon|upcoming|plans for|vision|what.*next|next.*plan)\b/.test(t)) return 'INFO_FUTURE'
   if (/\b(what is rialo calls|what.*rialo calls|about rialo calls|explain rialo)\b/.test(t)) return 'INFO_RIALO'
@@ -176,8 +184,9 @@ export default function CallsGuide() {
   // ─── Greeting ────────────────────────────────────────────────────────────────
 
   function greet() {
+    const name = profile?.name ? ` ${profile.name}` : ''
     addBot(
-      "Hey! I'm Calls Guide 👋\nYour assistant for Rialo Calls.\n\nI can help you bet, claim rewards, manage your wallet, and more. What would you like to do?",
+      `Hey${name}! I'm Calls Guide 👋\nYour on-chain assistant for Rialo Calls.\n\nI can bet, claim rewards, check your balance, manage badges, submit polls, and answer any question about how Rialo Calls works — including the X Resolver, session wallet, smart contracts, and more.\n\nWhat would you like to do?`,
       MENU_CHIPS
     )
   }
@@ -495,33 +504,37 @@ export default function CallsGuide() {
   function handleInfoNovel() {
     addBot(
       "🚀 What makes Rialo Calls genuinely different:\n\n" +
-      "⚡ Session Wallet — This is the core innovation. Most Web3 apps make you sign every single transaction in MetaMask. On Rialo Calls you sign ONCE. That creates a session wallet in your browser that handles everything silently from there. Bet, claim, mint badges, vote — all without a single popup. It feels like a Web2 app. Every transaction is still fully on-chain.\n\n" +
-      "🤖 AI Agent (Rialo Agent 001) — A fully autonomous AI participant that wakes up daily, reads open markets, asks an AI model YES or NO, and places real bets on-chain. Zero human input. Runs free on GitHub Actions. The platform is alive even with zero users.\n\n" +
-      "🔒 Latch Integration — Rialo's own product (OnLatch) protects the AI agent's API key with 5 policy filters. We're not just deployed on Rialo — we use Rialo's actual tools.\n\n" +
-      "🗳️ On-Chain Polls — Community decides what gets bet on. Submit ideas, vote, top 3 become real markets. All recorded on-chain.\n\n" +
-      "💬 Calls Guide — That's me. A conversational assistant so anyone can interact with the platform just by typing. No navigation, no confusion.\n\n" +
-      "One line: Rialo Calls makes onchain prediction markets feel like a consumer app. 🎯",
+      "⚡ Session Wallet — Sign ONCE with MetaMask. That creates a session wallet in your browser that handles every bet, claim, badge, and vote silently from there. Feels like a Web2 app. Every transaction is fully on-chain.\n\n" +
+      "🤖 AI Agent (Rialo Agent 001) — A fully autonomous AI that wakes daily, reads open markets, asks an AI model YES or NO, and places real on-chain bets. Zero human input. Runs free on GitHub Actions.\n\n" +
+      "🔭 X Resolver — Admin sets a Twitter/X condition on a prediction (e.g. \"@elonmusk hits 200M followers\"). The resolver checks every hour via GitHub Actions. When condition is met, it locks betting on-chain automatically — no manual admin needed.\n\n" +
+      "🔒 Latch Integration — Rialo's own product (OnLatch) protects the AI agent's API key with 5 policy filters. We're not just using Rialo — we use their actual tools.\n\n" +
+      "🗳️ On-Chain Polls — Community decides what gets bet on. Submit ideas, vote, top 3 become real markets. All on-chain.\n\n" +
+      "💬 Calls Guide — That's me. Just type anything. No navigation, no confusion.\n\n" +
+      "One line: Rialo Calls makes on-chain prediction markets feel like a consumer app. 🎯",
       [
-        { label: '🔮 Future plans',     intent: 'INFO_FUTURE' },
-        { label: '🎯 Bet on a market',  intent: 'BET'         },
-        { label: '↩ Menu',              intent: 'MENU'        },
+        { label: '🔭 X Resolver',       intent: 'INFO_RESOLVER' },
+        { label: '🔮 Future plans',     intent: 'INFO_FUTURE'   },
+        { label: '🎯 Bet on a market',  intent: 'BET'           },
+        { label: '↩ Menu',              intent: 'MENU'          },
       ]
     )
   }
 
   function handleInfoFuture() {
     addBot(
-      "🔭 What's next for Rialo Calls:\n\n" +
-      "🏗️  Rialo Mainnet — The biggest step. Once Rialo mainnet goes live, Rialo Calls ships there. Real value, real stakes, real community.\n\n" +
-      "🧠 Community-Driven Roadmap — The poll system exists for a reason. Features and prediction categories the community votes for most will get built first. The community literally decides what comes next.\n\n" +
-      "📱 More Market Categories — Crypto, tech, sports, real-world events. The more the community calls, the more categories grow.\n\n" +
-      "👥 Social Layer — Following top callers, sharing predictions, reputation scores. Making it the place where the sharpest community minds compete publicly.\n\n" +
-      "🤖 More AI Agents — Rialo Agent 001 is the first. More agents with different strategies and personalities join the market over time.\n\n" +
-      "🌍 The vision: Rialo Calls becomes the home of community prediction on the Rialo ecosystem — where the community calls what happens next, and the best callers earn reputation and rewards. 🎯",
+      "🔮 What's next for Rialo Calls:\n\n" +
+      "🏗️ Rialo Mainnet — The biggest step. Once Rialo mainnet launches, Rialo Calls ships there. Real value, real stakes, real community.\n\n" +
+      "🔭 X Resolver Expansion — More condition types, multiple handles per prediction, webhook notifications when conditions trigger.\n\n" +
+      "🧠 Community Roadmap — The poll system is how the community votes on what gets built and what categories expand. The community literally decides.\n\n" +
+      "📱 More Market Categories — Crypto, tech, sports, real-world events. Community-voted categories grow over time.\n\n" +
+      "👥 Social Layer — Following top callers, sharing predictions, public reputation scores. The place where the sharpest minds compete.\n\n" +
+      "🤖 More AI Agents — Rialo Agent 001 is first. More agents with different strategies join the market.\n\n" +
+      "🌍 Vision: Rialo Calls becomes the home of community prediction on Rialo — where the community calls what happens next and the best callers earn. 🎯",
       [
-        { label: '🚀 Unique features',  intent: 'INFO_NOVEL'  },
-        { label: '🎯 Bet on a market',  intent: 'BET'         },
-        { label: '↩ Menu',              intent: 'MENU'        },
+        { label: '🚀 What makes it unique', intent: 'INFO_NOVEL'    },
+        { label: '🔭 X Resolver',           intent: 'INFO_RESOLVER' },
+        { label: '🎯 Bet on a market',      intent: 'BET'           },
+        { label: '↩ Menu',                  intent: 'MENU'          },
       ]
     )
   }
@@ -552,6 +565,104 @@ export default function CallsGuide() {
     )
   }
 
+  function handleInfoResolver() {
+    addBot(
+      "🔭 The X Resolver — Rialo Calls' automated prediction lock system:\n\n" +
+      "When admin creates a prediction tied to a Twitter/X account (e.g. \"Will @elonmusk gain 1M followers this week?\"), they activate the X Resolver on that prediction.\n\n" +
+      "They set:\n" +
+      "• X Handle — whose account to watch\n" +
+      "• Condition — follower count, tweet count, new post, PFP change, post views/likes/reposts/replies, and more\n" +
+      "• Target — the threshold number (e.g. 200,000,000 followers)\n\n" +
+      "Then every hour, GitHub Actions wakes up the resolver agent, which:\n" +
+      "1. Fetches live X data via fxtwitter (free, no API key)\n" +
+      "2. Compares against the target\n" +
+      "3. If condition is met → calls lockBetting() on the BettingPool smart contract on-chain\n" +
+      "4. Updates prediction status to locked in Supabase\n" +
+      "5. Logs everything to x_monitor_logs table\n\n" +
+      "No manual admin action needed. The market locks itself when the real-world event happens. ⚡",
+      [
+        { label: '🚀 What makes it unique', intent: 'INFO_NOVEL'        },
+        { label: '🏗️ Architecture',         intent: 'INFO_ARCHITECTURE' },
+        { label: '↩ Menu',                  intent: 'MENU'              },
+      ]
+    )
+  }
+
+  function handleInfoArchitecture() {
+    addBot(
+      "🏗️ Rialo Calls — Technical Architecture:\n\n" +
+      "Frontend: React + Vite, wagmi v2, viem, RainbowKit — deployed on Vercel\n" +
+      "Chain: Ethereum Sepolia testnet\n" +
+      "Database: Supabase (PostgreSQL + realtime subscriptions)\n\n" +
+      "── Smart Contracts ──\n" +
+      "• RLO Token — ERC-20 with built-in faucet (1,000 RLO/month)\n" +
+      "• BettingPool — Creates markets, accepts bets, locks, declares winners, handles claims/refunds\n" +
+      "• ProfileRegistry — On-chain identity (name, bio, PFP hash, X username)\n" +
+      "• AchievementRegistry — Badge NFTs (Starter/Caller/Oracle/OG) based on bet count\n" +
+      "• PollRegistry — Community poll submissions and voting\n\n" +
+      "── Session Wallet ──\n" +
+      "User signs one message with MetaMask → keccak256(signature) becomes a deterministic private key → stored in localStorage. All transactions use this key silently. Same MetaMask = same session key always.\n\n" +
+      "── GitHub Actions Agents ──\n" +
+      "• RialoBot (8AM UTC daily) — AI bet placement\n" +
+      "• X Resolver (every hour) — auto-lock via X conditions\n" +
+      "• Claim Agent (weekly) — auto-claims RialoBot winnings",
+      [
+        { label: '🔭 X Resolver',   intent: 'INFO_RESOLVER' },
+        { label: '🔒 Security',     intent: 'INFO_SECURITY'  },
+        { label: '↩ Menu',         intent: 'MENU'            },
+      ]
+    )
+  }
+
+  function handleInfoAdmin() {
+    addBot(
+      "🛠️ Admin Panel — What admins can do:\n\n" +
+      "── Predictions Tab ──\n" +
+      "• Create predictions — set title, description, banner, deadline, category\n" +
+      "• Use templates for quick creation\n" +
+      "• Lock betting (manual or auto via X Resolver)\n" +
+      "• Declare winner (YES or NO) — opens claiming for winners\n" +
+      "• Extend deadline, refund, or delete markets\n\n" +
+      "── Polls Tab ──\n" +
+      "• View community poll submissions\n" +
+      "• Close voting rounds and declare top 3 winners\n" +
+      "• Delete inappropriate polls\n\n" +
+      "── 🔭 Resolver Tab ──\n" +
+      "• Activate X monitoring on any open prediction\n" +
+      "• Set handle, condition type, and target threshold\n" +
+      "• View live progress of all monitored predictions\n" +
+      "• See history of all auto-locked predictions\n" +
+      "• Deactivate monitoring at any time\n\n" +
+      "Admin wallets: 0x2601Ab18...E195 and 0x18C8D508...45B8",
+      [
+        { label: '🔭 X Resolver',      intent: 'INFO_RESOLVER'     },
+        { label: '🏗️ Architecture',    intent: 'INFO_ARCHITECTURE'  },
+        { label: '↩ Menu',             intent: 'MENU'               },
+      ]
+    )
+  }
+
+  function handleInfoSecurity() {
+    addBot(
+      "🔐 Security — How Rialo Calls protects everything:\n\n" +
+      "── Secrets ──\n" +
+      "All private keys and API tokens live only in GitHub Actions Secrets — never in code. The repository has zero hardcoded secrets. Verified clean.\n\n" +
+      "── Session Wallet ──\n" +
+      "Your session key is stored only in your browser's localStorage. It never leaves your device. No server holds it. If you clear localStorage, you sign once again with MetaMask to restore it.\n\n" +
+      "── Smart Contracts ──\n" +
+      "All bet logic is enforced on-chain. Supabase is only a display mirror. Even if Supabase were hacked, no funds can be moved — only the contract can do that.\n\n" +
+      "── Admin Access ──\n" +
+      "Admin functions are gated by wallet address on-chain (ADMIN_ONE / ADMIN_TWO). Frontend also checks via isAdmin() before showing the admin page.\n\n" +
+      "── Supabase Anon Key ──\n" +
+      "The anon key is public by design (it's in the Vite bundle everyone can see). The dangerous key (service role) is GitHub Secret only.\n\n" +
+      "Bottom line: funds are protected by smart contracts, secrets are protected by GitHub, and identity is protected by wallet signatures. 🔒",
+      [
+        { label: '🏗️ Architecture', intent: 'INFO_ARCHITECTURE' },
+        { label: '↩ Menu',         intent: 'MENU'               },
+      ]
+    )
+  }
+
   function handleHowToBet() {
     addBot(
       "🎯 How to bet on Rialo Calls:\n\n" +
@@ -568,23 +679,27 @@ export default function CallsGuide() {
   function handleHelp() {
     addBot(
       "Here's everything I can do:\n\n" +
+      "── Actions ──\n" +
       "🎯 Bet on open markets\n" +
-      "💧 Claim free RLO faucet\n" +
+      "💧 Claim free RLO (monthly faucet)\n" +
       "🏆 Claim your winnings\n" +
-      "↩ Claim refunds\n" +
-      "💰 Check your balance\n" +
+      "↩  Claim refunds\n" +
+      "💰 Check your wallet balance\n" +
       "📋 View open markets\n" +
-      "🔮 Check & mint badges\n" +
-      "💡 Submit or see poll ideas\n\n" +
-      "You can click buttons or just type what you need!",
+      "🔮 Check & mint achievement badges\n" +
+      "💡 Submit poll ideas on-chain\n\n" +
+      "── Knowledge ──\n" +
+      "Ask me about: X Resolver, session wallet, smart contracts, architecture, security, how betting works, RLO token, Latch, admin features, roadmap, and more.\n\n" +
+      "Just type naturally — I understand questions!",
       MENU_CHIPS
     )
   }
 
   function handleUnknown() {
     addBot(
-      "I'm focused on helping you interact with Rialo Calls. I didn't quite get that.\n\n" +
-      "Here's what I can help with:",
+      "I didn't quite catch that — but I know a lot!\n\n" +
+      "You can ask me about: betting, claiming, faucet, balance, badges, polls, the X Resolver, session wallet, smart contracts, architecture, security, admin features, RLO token, Latch, or the roadmap.\n\n" +
+      "Or pick an action below:",
       MENU_CHIPS
     )
   }
@@ -600,23 +715,27 @@ export default function CallsGuide() {
     const intent = fromChip ? text : detectIntent(text)
 
     switch (intent) {
-      case 'GREETING':    greet();                    break
-      case 'MENU':        showMenu();                 break
-      case 'BALANCE':     await handleBalance();      break
-      case 'FAUCET':      await handleFaucet();       break
-      case 'MARKETS':     await handleMarkets();      break
-      case 'BET':         await handleBet(text);      break
-      case 'CLAIM':       await handleClaim();        break
-      case 'REFUND':      await handleRefund();       break
-      case 'BADGE':       await handleBadge();        break
-      case 'POLL':        await handlePoll(text);     break
-      case 'INFO_NOVEL':  handleInfoNovel();          break
-      case 'INFO_FUTURE': handleInfoFuture();        break
-      case 'INFO_RIALO':  handleInfoRialo();         break
-      case 'INFO_RLO':    handleInfoRLO();           break
-      case 'INFO_LATCH':  handleInfoLatch();         break
-      case 'HOW_TO_BET':  handleHowToBet();          break
-      case 'HELP':        handleHelp();              break
+      case 'GREETING':          greet();                        break
+      case 'MENU':              showMenu();                     break
+      case 'BALANCE':           await handleBalance();          break
+      case 'FAUCET':            await handleFaucet();           break
+      case 'MARKETS':           await handleMarkets();          break
+      case 'BET':               await handleBet(text);          break
+      case 'CLAIM':             await handleClaim();            break
+      case 'REFUND':            await handleRefund();           break
+      case 'BADGE':             await handleBadge();            break
+      case 'POLL':              await handlePoll(text);         break
+      case 'INFO_NOVEL':        handleInfoNovel();              break
+      case 'INFO_FUTURE':       handleInfoFuture();             break
+      case 'INFO_RIALO':        handleInfoRialo();              break
+      case 'INFO_RLO':          handleInfoRLO();                break
+      case 'INFO_LATCH':        handleInfoLatch();              break
+      case 'INFO_RESOLVER':     handleInfoResolver();           break
+      case 'INFO_ARCHITECTURE': handleInfoArchitecture();       break
+      case 'INFO_ADMIN':        handleInfoAdmin();              break
+      case 'INFO_SECURITY':     handleInfoSecurity();           break
+      case 'HOW_TO_BET':        handleHowToBet();               break
+      case 'HELP':              handleHelp();                   break
       default:
         // Check if user is in a bet flow and typed amount/side/number
         if (betFlow?.markets) {
