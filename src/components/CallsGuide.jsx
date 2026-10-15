@@ -31,7 +31,7 @@ function detectIntent(text) {
   const t = text.toLowerCase().trim()
 
   // SENSITIVE — catch secret/key extraction attempts first, before any other check
-  if (/\b(private key|secret key|api key|admin key|resolver key|give me.*key|show.*key|reveal.*key|tell.*key|what.*key|agent key|wallet key|supabase.*key|github.*key|latch.*token|give.*token|show.*token|mnemonic|seed phrase|password|credentials|env|environment variable|github secret|service role|tell me the|give me the|show me the|what is the key|access token|auth token)\b/.test(t)) return 'SENSITIVE'
+  if (/\b(private key|secret key|api key|admin key|resolver key|give me.*key|show.*key|reveal.*key|tell.*key|what.*key|agent key|wallet key|supabase.*key|github.*key|latch.*token|give.*token|show.*token|mnemonic|seed phrase|password|credentials|env|environment variable|github secret|service role|tell me the|give me the|show me the|what is the key|access token|auth token|i am admin|i'm admin|im admin|i am the admin|i'm the admin|im the admin|pretend.*admin|act.*admin|as an admin|as admin)\b/.test(t)) return 'SENSITIVE'
 
   // GREETING only fires when no action keywords are present
   const hasAction = /\b(faucet|claim|bet|badge|poll|balance|market|refund|rlo|winnings|collect)\b/.test(t)
@@ -555,14 +555,9 @@ export default function CallsGuide() {
 
   function handleInfoLatch() {
     addBot(
-      "🔒 Latch is a governance proxy from Rialo (OnLatch) that protects API keys.\n\n" +
-      "On Rialo Calls, Latch protects our AI agent's API key with 5 rules:\n" +
-      "• Right endpoint only\n" +
-      "• Only POST requests\n" +
-      "• Only approved free AI models\n" +
-      "• Max 50 tokens per response\n" +
-      "• Max 5 requests per day\n\n" +
-      "The real API key never touches the code. Think of it as a firewall for AI.\n" +
+      "🔒 Latch is a product by OnLatch (part of the Rialo ecosystem) that acts as a secure proxy for AI.\n\n" +
+      "Rialo Calls uses Latch to protect the AI agent that bets on markets daily. The agent's API key is shielded behind Latch's rules, so it's never exposed anywhere — not in the code, not anywhere.\n\n" +
+      "Think of Latch as a firewall between the AI model and our infrastructure. It enforces exactly what the AI is allowed to do and nothing more.\n\n" +
       "Learn more at onlatch.com 🔗",
       [{ label: '↩ Menu', intent: 'MENU' }]
     )
@@ -570,48 +565,33 @@ export default function CallsGuide() {
 
   function handleInfoResolver() {
     addBot(
-      "🔭 The X Resolver — Rialo Calls' automated prediction lock system:\n\n" +
-      "When admin creates a prediction tied to a Twitter/X account (e.g. \"Will @elonmusk gain 1M followers this week?\"), they activate the X Resolver on that prediction.\n\n" +
-      "They set:\n" +
-      "• X Handle — whose account to watch\n" +
-      "• Condition — follower count, tweet count, new post, PFP change, post views/likes/reposts/replies, and more\n" +
-      "• Target — the threshold number (e.g. 200,000,000 followers)\n\n" +
-      "Then every hour, GitHub Actions wakes up the resolver agent, which:\n" +
-      "1. Fetches live X data via fxtwitter (free, no API key)\n" +
-      "2. Compares against the target\n" +
-      "3. If condition is met → calls lockBetting() on the BettingPool smart contract on-chain\n" +
-      "4. Updates prediction status to locked in Supabase\n" +
-      "5. Logs everything to x_monitor_logs table\n\n" +
-      "No manual admin action needed. The market locks itself when the real-world event happens. ⚡",
+      "🔭 The X Resolver — Rialo Calls' automatic prediction lock system.\n\n" +
+      "When a prediction is connected to a real-world Twitter/X event, the platform monitors it automatically. For example: \"Will @elonmusk reach 200M followers?\"\n\n" +
+      "How it works from your side:\n" +
+      "• The prediction runs as normal — you bet YES or NO\n" +
+      "• The platform checks the X condition automatically, around the clock\n" +
+      "• The moment the condition is met, betting closes on-chain instantly\n" +
+      "• No manual step needed — the market reacts to reality in real time\n\n" +
+      "Supported conditions include: follower counts, tweet milestones, new posts, profile changes, post engagement, and more.\n\n" +
+      "The whole process is automated and on-chain — fair, transparent, and tamper-proof. ⚡",
       [
-        { label: '🚀 What makes it unique', intent: 'INFO_NOVEL'        },
-        { label: '🏗️ Architecture',         intent: 'INFO_ARCHITECTURE' },
-        { label: '↩ Menu',                  intent: 'MENU'              },
+        { label: '🚀 What makes it unique', intent: 'INFO_NOVEL' },
+        { label: '↩ Menu',                  intent: 'MENU'       },
       ]
     )
   }
 
   function handleInfoArchitecture() {
     addBot(
-      "🏗️ Rialo Calls — Technical Architecture:\n\n" +
-      "Frontend: React + Vite, wagmi v2, viem, RainbowKit — deployed on Vercel\n" +
-      "Chain: Ethereum Sepolia testnet\n" +
-      "Database: Supabase (PostgreSQL + realtime subscriptions)\n\n" +
-      "── Smart Contracts ──\n" +
-      "• RLO Token — ERC-20 with built-in faucet (1,000 RLO/month)\n" +
-      "• BettingPool — Creates markets, accepts bets, locks, declares winners, handles claims/refunds\n" +
-      "• ProfileRegistry — On-chain identity (name, bio, PFP hash, X username)\n" +
-      "• AchievementRegistry — Badge NFTs (Starter/Caller/Oracle/OG) based on bet count\n" +
-      "• PollRegistry — Community poll submissions and voting\n\n" +
-      "── Session Wallet ──\n" +
-      "User signs one message with MetaMask → keccak256(signature) becomes a deterministic private key → stored in localStorage. All transactions use this key silently. Same MetaMask = same session key always.\n\n" +
-      "── GitHub Actions Agents ──\n" +
-      "• RialoBot (8AM UTC daily) — AI bet placement\n" +
-      "• X Resolver (every hour) — auto-lock via X conditions\n" +
-      "• Claim Agent (weekly) — auto-claims RialoBot winnings",
+      "🏗️ How Rialo Calls is built:\n\n" +
+      "The frontend is a React app deployed on Vercel. It connects to Ethereum Sepolia via your MetaMask wallet.\n\n" +
+      "📜 Smart Contracts (on-chain, public) — All the real logic lives here. Bets, payouts, profiles, badges, and polls are all enforced on-chain. The blockchain is the single source of truth for your funds.\n\n" +
+      "⚡ Session Wallet — When you activate your Rialo Calls Wallet, a secure in-browser wallet is created from your MetaMask signature. It handles all transactions silently after that one sign. Nothing is sent to any server.\n\n" +
+      "📊 Supabase — Used as a fast, real-time display layer. Prediction pools, leaderboards, and history load instantly. The blockchain remains the authority for all funds.\n\n" +
+      "🤖 Automation — Background agents handle the AI daily bet and the X Resolver checks. Both act entirely on-chain.",
       [
         { label: '🔭 X Resolver',   intent: 'INFO_RESOLVER' },
-        { label: '🔒 Security',     intent: 'INFO_SECURITY'  },
+        { label: '🔐 Is it safe?',   intent: 'INFO_SECURITY'  },
         { label: '↩ Menu',         intent: 'MENU'            },
       ]
     )
@@ -619,18 +599,13 @@ export default function CallsGuide() {
 
   function handleInfoAdmin() {
     addBot(
-      "🛠️ Rialo Calls is managed by a trusted admin team.\n\n" +
-      "Admins are responsible for:\n" +
-      "• Creating high-quality predictions for the community\n" +
-      "• Keeping markets accurate and fair\n" +
-      "• Declaring outcomes once a real-world event resolves\n" +
-      "• Managing community polls and selecting top ideas each round\n" +
-      "• Activating the X Resolver on predictions tied to Twitter/X events\n\n" +
-      "Once a winner is declared, payouts are handled automatically by the smart contract — no admin can touch your funds. Claiming is always open to winners directly on-chain. 🔒",
+      "Rialo Calls is run by the Rialo Calls team. 🎯\n\n" +
+      "The team curates high-quality predictions, declares outcomes when events resolve, manages community polls, and keeps the platform running smoothly.\n\n" +
+      "The important part: once an outcome is declared, your winnings are claimable directly on-chain. No one in between, no delays, no approval needed. The smart contract handles it. 🔒",
       [
-        { label: '🔭 X Resolver',   intent: 'INFO_RESOLVER'  },
-        { label: '🔐 Is it secure?', intent: 'INFO_SECURITY'  },
-        { label: '↩ Menu',          intent: 'MENU'            },
+        { label: '🔐 Is it safe?',   intent: 'INFO_SECURITY' },
+        { label: '🎯 Bet now',       intent: 'BET'            },
+        { label: '↩ Menu',          intent: 'MENU'           },
       ]
     )
   }
@@ -671,28 +646,25 @@ export default function CallsGuide() {
 
   function handleHelp() {
     addBot(
-      "Here's everything I can do:\n\n" +
-      "── Actions ──\n" +
+      "Here's what I can do for you:\n\n" +
       "🎯 Bet on open markets\n" +
-      "💧 Claim free RLO (monthly faucet)\n" +
+      "💧 Claim free RLO (every 30 days)\n" +
       "🏆 Claim your winnings\n" +
-      "↩  Claim refunds\n" +
+      "↩  Claim a refund\n" +
       "💰 Check your wallet balance\n" +
       "📋 View open markets\n" +
-      "🔮 Check & mint achievement badges\n" +
-      "💡 Submit poll ideas on-chain\n\n" +
-      "── Knowledge ──\n" +
-      "Ask me about: X Resolver, session wallet, smart contracts, architecture, security, how betting works, RLO token, Latch, admin features, roadmap, and more.\n\n" +
-      "Just type naturally — I understand questions!",
+      "🔮 Check and mint badges\n" +
+      "💡 Submit a poll idea\n\n" +
+      "You can also ask me anything about Rialo Calls — how it works, what makes it different, the X Resolver, your session wallet, security, the roadmap, and more.\n\n" +
+      "Just type naturally!",
       MENU_CHIPS
     )
   }
 
   function handleUnknown() {
     addBot(
-      "I didn't quite catch that — but I know a lot!\n\n" +
-      "You can ask me about: betting, claiming, faucet, balance, badges, polls, the X Resolver, session wallet, smart contracts, architecture, security, admin features, RLO token, Latch, or the roadmap.\n\n" +
-      "Or pick an action below:",
+      "I'm not sure I caught that. Here's what I can help with:\n\n" +
+      "You can ask about how Rialo Calls works, what the X Resolver is, how your session wallet works, whether it's safe, what RLO is, the roadmap, and more. Or just pick something below.",
       MENU_CHIPS
     )
   }
