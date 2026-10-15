@@ -507,12 +507,12 @@ export default function CallsGuide() {
   function handleInfoNovel() {
     addBot(
       "🚀 What makes Rialo Calls genuinely different:\n\n" +
-      "⚡ Session Wallet — Sign ONCE with MetaMask. That creates a session wallet in your browser that handles every bet, claim, badge, and vote silently from there. Feels like a Web2 app. Every transaction is fully on-chain.\n\n" +
-      "🤖 AI Agent (Rialo Agent 001) — A fully autonomous AI that wakes daily, reads open markets, asks an AI model YES or NO, and places real on-chain bets. Zero human input. Runs free on GitHub Actions.\n\n" +
-      "🔭 X Resolver — Admin sets a Twitter/X condition on a prediction (e.g. \"@elonmusk hits 200M followers\"). The resolver checks every hour via GitHub Actions. When condition is met, it locks betting on-chain automatically — no manual admin needed.\n\n" +
-      "🔒 Latch Integration — Rialo's own product (OnLatch) protects the AI agent's API key with 5 policy filters. We're not just using Rialo — we use their actual tools.\n\n" +
-      "🗳️ On-Chain Polls — Community decides what gets bet on. Submit ideas, vote, top 3 become real markets. All on-chain.\n\n" +
-      "💬 Calls Guide — That's me. Just type anything. No navigation, no confusion.\n\n" +
+      "⚡ Session Wallet — Sign ONCE with MetaMask. That creates a personal in-browser wallet that handles every bet, claim, badge, and vote silently. No popups, no friction. Every transaction is still fully on-chain.\n\n" +
+      "🤖 AI Participant (Rialo Agent 001) — A fully autonomous AI that wakes up daily, analyzes open markets, and places real on-chain bets. The platform stays active and engaging around the clock.\n\n" +
+      "🔭 X Resolver — Predictions tied to Twitter/X events resolve automatically. The platform monitors the condition and closes betting the moment it's met — no manual step, no delay.\n\n" +
+      "🔒 Latch Security — The AI agent's access is protected by Latch (OnLatch), Rialo's own infrastructure product. We don't just build on Rialo — we use their tools too.\n\n" +
+      "🗳️ Community Polls — The community votes on what gets bet on. Top ideas each round become real markets. You shape what happens on the platform.\n\n" +
+      "💬 Calls Guide — That's me. Just type what you need. No menus to dig through.\n\n" +
       "One line: Rialo Calls makes on-chain prediction markets feel like a consumer app. 🎯",
       [
         { label: '🔭 X Resolver',       intent: 'INFO_RESOLVER' },
