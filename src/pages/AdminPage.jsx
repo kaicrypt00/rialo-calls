@@ -69,6 +69,7 @@ export default function AdminPage() {
           {[
             { id: 'predictions', label: '📊 Predictions', },
             { id: 'polls',       label: '🗳 Poll Management', },
+            { id: 'resolver',    label: '🔭 Resolver', },
           ].map(tab => (
             <button
               key={tab.id}
@@ -122,6 +123,13 @@ export default function AdminPage() {
         {adminTab === 'polls' && (
           <AdminGlassCard title="Poll Management" icon="🗳">
             <AdminPollsTab />
+          </AdminGlassCard>
+        )}
+
+        {/* Resolver Tab */}
+        {adminTab === 'resolver' && (
+          <AdminGlassCard title="X Resolver" icon="🔭">
+            <ResolverTab />
           </AdminGlassCard>
         )}
       </main>
@@ -1378,6 +1386,553 @@ function AdminPollsTab() {
           </div>
         )}
       </div>
+
+    </div>
+  )
+}
+
+// ============================================================
+// Section 5 — X Resolver Tab
+// ============================================================
+function ResolverTab() {
+  const { showFailed } = useToast()
+  const [activeSubTab, setActiveSubTab]       = useState('watching')
+  const [openPredictions, setOpenPredictions] = useState([])
+  const [logs, setLogs]                       = useState([])
+  const [historyLogs, setHistoryLogs]         = useState([])
+  const [lastRanAt, setLastRanAt]             = useState(null)
+  const [expandedId, setExpandedId]           = useState(null)
+  const [configForm, setConfigForm]           = useState({})
+  const [activating, setActivating]           = useState(null)
+  const [loading, setLoading]                 = useState(true)
+
+  useEffect(() => { loadAll() }, [])
+
+  async function loadAll() {
+    setLoading(true)
+    try {
+      const { data: preds } = await supabase
+        .from('predictions_display')
+        .select('id, title, deadline, x_monitor, status')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+      setOpenPredictions(preds || [])
+
+      const { data: latestLogs } = await supabase
+        .from('x_monitor_logs')
+        .select('*')
+        .order('checked_at', { ascending: false })
+        .limit(100)
+      setLogs(latestLogs || [])
+
+      const { data: triggered } = await supabase
+        .from('x_monitor_logs')
+        .select('*')
+        .eq('triggered', true)
+        .order('checked_at', { ascending: false })
+        .limit(50)
+
+      if (triggered && triggered.length > 0) {
+        const predIds = [...new Set(triggered.map(l => l.prediction_id))]
+        const { data: predTitles } = await supabase
+          .from('predictions_display')
+          .select('id, title')
+          .in('id', predIds)
+        const titleMap = {}
+        if (predTitles) predTitles.forEach(p => { titleMap[p.id] = p.title })
+        setHistoryLogs(
+          triggered.map(l => ({
+            ...l,
+            prediction_title: titleMap[l.prediction_id] || `#${l.prediction_id}`,
+          }))
+        )
+      } else {
+        setHistoryLogs([])
+      }
+
+      if (latestLogs && latestLogs.length > 0) {
+        setLastRanAt(new Date(latestLogs[0].checked_at))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function nextRunMinutes() {
+    const now = new Date()
+    return 60 - now.getMinutes()
+  }
+
+  function getLatestLog(predId) {
+    return logs.find(l => l.prediction_id === predId) || null
+  }
+
+  function autoFill(pred) {
+    const text = `${pred.title}`
+    const handleMatch = text.match(/@([A-Za-z0-9_]+)/)
+    const numberMatch = text.match(/\b(\d[\d,]*[kKmM]?)\b/)
+    let target = null
+    if (numberMatch) {
+      const raw = numberMatch[1].replace(/,/g, '')
+      if (raw.toLowerCase().endsWith('k'))      target = parseInt(raw) * 1000
+      else if (raw.toLowerCase().endsWith('m')) target = parseInt(raw) * 1000000
+      else                                      target = parseInt(raw)
+    }
+    return {
+      handle:         handleMatch ? handleMatch[1] : '',
+      condition_type: '',
+      threshold:      target || '',
+      tweet_url:      '',
+      has_deadline:   !!pred.deadline,
+    }
+  }
+
+  function openConfig(pred) {
+    if (expandedId === pred.id) { setExpandedId(null); return }
+    setExpandedId(pred.id)
+    setConfigForm(autoFill(pred))
+  }
+
+  function extractTweetId(url) {
+    const match = url.match(/status\/(\d+)/)
+    return match ? match[1] : url.trim()
+  }
+
+  const needsThreshold = c => !['pfp_change', 'new_post', 'verification_change'].includes(c)
+  const needsTweetUrl  = c => ['post_views', 'post_likes', 'post_reposts', 'post_replies'].includes(c)
+
+  async function handleActivate(pred) {
+    const { handle, condition_type, threshold, tweet_url } = configForm
+    if (!handle)         return showFailed('X handle required')
+    if (!condition_type) return showFailed('Condition required')
+    if (needsThreshold(condition_type) && !threshold) return showFailed('Target number required')
+    if (needsTweetUrl(condition_type)  && !tweet_url) return showFailed('Tweet URL required')
+
+    const tweetId = tweet_url ? extractTweetId(tweet_url) : null
+
+    const monitor = {
+      handle:               handle.replace('@', ''),
+      condition_type,
+      threshold:            threshold ? String(threshold) : null,
+      tweet_id:             tweetId,
+      has_deadline:         !!pred.deadline,
+      activation_timestamp: Math.floor(Date.now() / 1000),
+      last_tweet_id:        null,
+      last_pfp_url:         null,
+      last_verified:        null,
+      tracking_tweet_id:    null,
+    }
+
+    setActivating(pred.id)
+    try {
+      await supabase
+        .from('predictions_display')
+        .update({ x_monitor: monitor })
+        .eq('id', pred.id)
+      setExpandedId(null)
+      await loadAll()
+    } catch (e) {
+      showFailed('Failed to activate resolver')
+    } finally {
+      setActivating(null)
+    }
+  }
+
+  async function handleDeactivate(pred) {
+    await supabase
+      .from('predictions_display')
+      .update({ x_monitor: null })
+      .eq('id', pred.id)
+    await loadAll()
+  }
+
+  const watchingPredictions    = openPredictions.filter(p => p.x_monitor !== null)
+  const unmonitoredPredictions = openPredictions.filter(p => p.x_monitor === null)
+
+  const C = {
+    surface:  '#141414',
+    elevated: '#1C1C1C',
+    border:   'rgba(223,219,207,0.08)',
+    cream:    '#DFDBCF',
+    gray:     '#8B8B8B',
+    dim:      '#555555',
+    danger:   '#D94F4F',
+    gold:     '#C9A84C',
+  }
+
+  const labelStyle = {
+    color: C.dim, fontSize: '11px', textTransform: 'uppercase',
+    letterSpacing: '0.06em', marginBottom: '6px', display: 'block',
+  }
+  const inputStyle = {
+    width: '100%', background: '#0A0A0A',
+    border: `1px solid rgba(223,219,207,0.15)`,
+    borderRadius: '8px', padding: '10px 12px',
+    color: C.cream, fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  }
+  const selectStyle = { ...inputStyle, cursor: 'pointer' }
+
+  if (loading) {
+    return (
+      <div style={{ color: C.dim, padding: '40px', textAlign: 'center' }}>
+        Loading resolver data...
+      </div>
+    )
+  }
+
+  return (
+    <div>
+
+      {/* ── Status Bar ── */}
+      <div style={{
+        display: 'flex', gap: '24px', flexWrap: 'wrap',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: '12px', padding: '16px 20px', marginBottom: '24px',
+      }}>
+        <div>
+          <div style={labelStyle}>Last Ran</div>
+          <div style={{ color: C.cream, fontSize: '14px' }}>
+            {lastRanAt
+              ? `${Math.round((Date.now() - lastRanAt.getTime()) / 60000)}m ago`
+              : 'Not yet run'}
+          </div>
+        </div>
+        <div>
+          <div style={labelStyle}>Next Run</div>
+          <div style={{ color: C.cream, fontSize: '14px' }}>in {nextRunMinutes()}m</div>
+        </div>
+        <div>
+          <div style={labelStyle}>Watching</div>
+          <div style={{ color: C.cream, fontSize: '14px' }}>{watchingPredictions.length} predictions</div>
+        </div>
+        <div>
+          <div style={labelStyle}>Total Locked</div>
+          <div style={{ color: C.gold, fontSize: '14px' }}>{historyLogs.length}</div>
+        </div>
+      </div>
+
+      {/* ── Sub-tabs ── */}
+      <div style={{
+        display: 'flex', gap: '4px', background: C.surface,
+        padding: '4px', borderRadius: '10px',
+        width: 'fit-content', marginBottom: '24px',
+      }}>
+        {[{ id: 'watching', label: 'Watching' }, { id: 'history', label: 'History' }].map(t => (
+          <button key={t.id} onClick={() => setActiveSubTab(t.id)} style={{
+            padding: '8px 20px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+            fontSize: '13px', fontWeight: '500',
+            background: activeSubTab === t.id ? 'rgba(223,219,207,0.1)' : 'transparent',
+            color: activeSubTab === t.id ? C.cream : C.dim,
+            transition: 'all 0.2s',
+          }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ══ WATCHING TAB ══ */}
+      {activeSubTab === 'watching' && (
+        <div>
+
+          {/* Currently monitored predictions */}
+          {watchingPredictions.length > 0 && (
+            <div style={{ marginBottom: '32px' }}>
+              <div style={{ ...labelStyle, marginBottom: '12px' }}>Currently Monitoring</div>
+              {watchingPredictions.map(pred => {
+                const m          = pred.x_monitor
+                const log        = getLatestLog(pred.id)
+                const hasThresh  = needsThreshold(m.condition_type)
+                const current    = log?.current_value || 'Not checked yet'
+                const target     = m.threshold ? parseInt(m.threshold) : null
+                const currentNum = log
+                  ? parseInt((log.current_value || '').replace(/[^0-9]/g, ''))
+                  : 0
+                const pct = hasThresh && target
+                  ? Math.min(100, Math.round((currentNum / target) * 100))
+                  : null
+
+                return (
+                  <div key={pred.id} style={{
+                    background: C.surface, border: `1px solid ${C.border}`,
+                    borderRadius: '12px', padding: '16px 20px', marginBottom: '10px',
+                  }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', gap: '12px',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: C.cream, fontSize: '14px', fontWeight: '500',
+                          marginBottom: '4px', overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {pred.title}
+                        </div>
+                        <div style={{ color: C.gray, fontSize: '13px', marginBottom: hasThresh ? '10px' : '0' }}>
+                          @{m.handle} · {m.condition_type.replace(/_/g, ' ')}
+                          {target ? ` · target: ${target.toLocaleString()}` : ''}
+                        </div>
+                        {hasThresh && target && (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <span style={{ color: C.gray, fontSize: '12px' }}>{current}</span>
+                              <span style={{ color: C.dim,  fontSize: '12px' }}>{pct}%</span>
+                            </div>
+                            <div style={{
+                              background: '#272727', borderRadius: '4px',
+                              height: '4px', overflow: 'hidden',
+                            }}>
+                              <div style={{
+                                width: `${pct}%`, height: '100%',
+                                background: pct >= 100 ? C.gold : C.cream,
+                                borderRadius: '4px', transition: 'width 0.3s',
+                              }} />
+                            </div>
+                          </div>
+                        )}
+                        {!hasThresh && (
+                          <div style={{ color: C.dim, fontSize: '12px' }}>{current}</div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                        {log && (
+                          <span style={{ color: C.dim, fontSize: '12px' }}>
+                            {Math.round((Date.now() - new Date(log.checked_at).getTime()) / 60000)}m ago
+                          </span>
+                        )}
+                        <div style={{
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: log?.error ? '#F59E0B' : '#4CAF50',
+                          boxShadow: `0 0 6px ${log?.error ? '#F59E0B' : '#4CAF50'}`,
+                        }} />
+                        <button
+                          onClick={() => handleDeactivate(pred)}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid rgba(217,79,79,0.25)`,
+                            color: C.danger, borderRadius: '6px',
+                            padding: '5px 10px', fontSize: '12px', cursor: 'pointer',
+                          }}
+                        >
+                          Deactivate
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Unmonitored open predictions */}
+          <div>
+            <div style={{ ...labelStyle, marginBottom: '12px' }}>
+              Open Predictions — Click to Add X Monitoring
+            </div>
+
+            {unmonitoredPredictions.length === 0 && (
+              <div style={{ color: C.dim, fontSize: '13px', padding: '20px 0' }}>
+                All open predictions are already being monitored.
+              </div>
+            )}
+
+            {unmonitoredPredictions.map(pred => (
+              <div key={pred.id} style={{ marginBottom: '8px' }}>
+
+                <div
+                  onClick={() => openConfig(pred)}
+                  style={{
+                    background: C.surface,
+                    border: `1px solid ${expandedId === pred.id
+                      ? 'rgba(223,219,207,0.25)'
+                      : C.border}`,
+                    borderRadius: expandedId === pred.id ? '12px 12px 0 0' : '12px',
+                    padding: '14px 18px', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <div style={{
+                    color: C.cream, fontSize: '14px', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    flex: 1, marginRight: '12px',
+                  }}>
+                    #{pred.id} — {pred.title}
+                  </div>
+                  <span style={{ color: C.dim, fontSize: '18px', flexShrink: 0 }}>
+                    {expandedId === pred.id ? '−' : '+'}
+                  </span>
+                </div>
+
+                {expandedId === pred.id && (
+                  <div style={{
+                    background: '#0F0F0F',
+                    border: `1px solid rgba(223,219,207,0.25)`,
+                    borderTop: 'none', borderRadius: '0 0 12px 12px',
+                    padding: '20px',
+                  }}>
+
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1fr',
+                      gap: '16px', marginBottom: '16px',
+                    }}>
+
+                      <div>
+                        <label style={labelStyle}>X Handle</label>
+                        <input
+                          value={configForm.handle || ''}
+                          onChange={e => setConfigForm(p => ({ ...p, handle: e.target.value }))}
+                          placeholder="elonmusk (no @)"
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={labelStyle}>What to Monitor</label>
+                        <select
+                          value={configForm.condition_type || ''}
+                          onChange={e => setConfigForm(p => ({ ...p, condition_type: e.target.value }))}
+                          style={selectStyle}
+                        >
+                          <option value="">— Pick a condition —</option>
+                          <optgroup label="Account">
+                            <option value="new_post">New Post Appeared</option>
+                            <option value="follower_count">Follower Count</option>
+                            <option value="tweet_count">Total Tweet Count</option>
+                            <option value="pfp_change">Profile Picture Changed</option>
+                            <option value="verification_change">Verification Changed</option>
+                          </optgroup>
+                          <optgroup label="Next Tweet (after activation)">
+                            <option value="next_tweet_views">Next Tweet Views</option>
+                            <option value="next_tweet_likes">Next Tweet Likes</option>
+                            <option value="next_tweet_reposts">Next Tweet Reposts</option>
+                            <option value="next_tweet_replies">Next Tweet Replies</option>
+                          </optgroup>
+                          <optgroup label="Specific Tweet (needs URL)">
+                            <option value="post_views">Post Views</option>
+                            <option value="post_likes">Post Likes</option>
+                            <option value="post_reposts">Post Reposts</option>
+                            <option value="post_replies">Post Replies</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      {configForm.condition_type && needsThreshold(configForm.condition_type) && (
+                        <div>
+                          <label style={labelStyle}>Target Number</label>
+                          <input
+                            type="number"
+                            value={configForm.threshold || ''}
+                            onChange={e => setConfigForm(p => ({ ...p, threshold: e.target.value }))}
+                            placeholder="e.g. 100000"
+                            style={inputStyle}
+                          />
+                        </div>
+                      )}
+
+                      {configForm.condition_type && needsTweetUrl(configForm.condition_type) && (
+                        <div>
+                          <label style={labelStyle}>Tweet URL</label>
+                          <input
+                            value={configForm.tweet_url || ''}
+                            onChange={e => setConfigForm(p => ({ ...p, tweet_url: e.target.value }))}
+                            placeholder="https://x.com/handle/status/..."
+                            style={inputStyle}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{
+                      marginBottom: '16px', padding: '10px 14px',
+                      background: 'rgba(223,219,207,0.03)',
+                      border: `1px solid ${C.border}`, borderRadius: '8px',
+                    }}>
+                      <span style={{ color: C.dim, fontSize: '12px' }}>Timeline: </span>
+                      <span style={{ color: C.gray, fontSize: '12px' }}>
+                        {pred.deadline
+                          ? `Monitors until ${new Date(pred.deadline).toLocaleDateString()}`
+                          : 'No deadline — monitors until condition is met'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => handleActivate(pred)}
+                        disabled={activating === pred.id}
+                        style={{
+                          flex: 1, background: C.cream, color: '#0A0A0A',
+                          border: 'none', borderRadius: '8px', padding: '11px',
+                          fontSize: '14px', fontWeight: '600',
+                          cursor: activating === pred.id ? 'not-allowed' : 'pointer',
+                          opacity: activating === pred.id ? 0.7 : 1,
+                        }}
+                      >
+                        {activating === pred.id ? 'Activating...' : 'Activate Resolver ✅'}
+                      </button>
+                      <button
+                        onClick={() => setExpandedId(null)}
+                        style={{
+                          background: 'transparent', border: `1px solid ${C.border}`,
+                          color: C.gray, borderRadius: '8px',
+                          padding: '11px 20px', fontSize: '14px', cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══ HISTORY TAB ══ */}
+      {activeSubTab === 'history' && (
+        <div>
+          <div style={{ ...labelStyle, marginBottom: '16px' }}>
+            Predictions Locked by Resolver
+          </div>
+
+          {historyLogs.length === 0 && (
+            <div style={{ color: C.dim, fontSize: '13px', padding: '40px 0', textAlign: 'center' }}>
+              Resolver hasn't locked any predictions yet.
+            </div>
+          )}
+
+          {historyLogs.map((log, i) => (
+            <div key={i} style={{
+              background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: '10px', padding: '14px 18px', marginBottom: '8px',
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', gap: '16px',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  color: C.cream, fontSize: '14px', marginBottom: '4px',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  #{log.prediction_id} — {log.prediction_title || 'Prediction'}
+                </div>
+                <div style={{ color: C.gray, fontSize: '12px' }}>
+                  @{log.handle} · {log.condition_type?.replace(/_/g, ' ')} · {log.current_value}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ color: C.gold, fontSize: '12px', marginBottom: '2px' }}>🔒 Locked</div>
+                <div style={{ color: C.dim, fontSize: '11px' }}>
+                  {new Date(log.checked_at).toLocaleDateString()}{' '}
+                  {new Date(log.checked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   )

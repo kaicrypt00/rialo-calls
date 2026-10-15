@@ -1,0 +1,30 @@
+name: X Resolver
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # Every hour on the hour (UTC)
+  workflow_dispatch:        # Manual run button in GitHub Actions UI for testing
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10     # Kill the job if it hangs longer than 10 minutes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run X Resolver
+        run: node agents/x-resolver.js
+        env:
+          RESOLVER_ADMIN_KEY: ${{ secrets.RESOLVER_ADMIN_KEY }}
+          SUPABASE_URL:       ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:  ${{ secrets.SUPABASE_ANON_KEY }}
