@@ -30,6 +30,9 @@ const BADGE_INFO = [
 function detectIntent(text) {
   const t = text.toLowerCase().trim()
 
+  // SENSITIVE — catch secret/key extraction attempts first, before any other check
+  if (/\b(private key|secret key|api key|admin key|resolver key|give me.*key|show.*key|reveal.*key|tell.*key|what.*key|agent key|wallet key|supabase.*key|github.*key|latch.*token|give.*token|show.*token|mnemonic|seed phrase|password|credentials|env|environment variable|github secret|service role|tell me the|give me the|show me the|what is the key|access token|auth token)\b/.test(t)) return 'SENSITIVE'
+
   // GREETING only fires when no action keywords are present
   const hasAction = /\b(faucet|claim|bet|badge|poll|balance|market|refund|rlo|winnings|collect)\b/.test(t)
   if (!hasAction && /\b(hi|hello|hey|sup|yo|gm|good morning|start|begin)\b/.test(t)) return 'GREETING'
@@ -43,13 +46,13 @@ function detectIntent(text) {
   if (/\b(balance|wallet|how much|my rlo|my eth|funds|tokens)\b/.test(t)) return 'BALANCE'
   if (/\b(markets|open markets|active|what.*bet|show me|list market|all market)\b/.test(t)) return 'MARKETS'
   // X Resolver
-  if (/\b(x resolver|resolver|x monitor|twitter monitor|auto lock|auto.*resolve|auto.*bet|x account|monitor.*twitter|monitor.*x|fxtwitter|condition.*lock|lock.*condition|x.*condition)\b/.test(t)) return 'INFO_RESOLVER'
+  if (/\b(x resolver|resolver|x monitor|twitter monitor|auto lock|auto.*resolve|x account|monitor.*twitter|monitor.*x|fxtwitter|condition.*lock|lock.*condition|x.*condition)\b/.test(t)) return 'INFO_RESOLVER'
   // Architecture / tech
-  if (/\b(architecture|tech stack|how.*built|how.*work|technical|contracts|supabase|viem|wagmi|sepolia|blockchain|on.?chain|smart contract|session wallet|how.*session|session.*key|private key.*session|how.*wallet.*work)\b/.test(t)) return 'INFO_ARCHITECTURE'
+  if (/\b(architecture|tech stack|how.*built|how.*work|technical|contracts|supabase|viem|wagmi|sepolia|blockchain|on.?chain|smart contract|session wallet|how.*session|session.*key|how.*wallet.*work)\b/.test(t)) return 'INFO_ARCHITECTURE'
   // Admin
-  if (/\b(admin|create.*prediction|manage.*prediction|declare.*winner|lock.*betting|admin.*panel|admin.*page|admin.*tab|who.*admin|admin.*wallet)\b/.test(t)) return 'INFO_ADMIN'
+  if (/\b(admin|create.*prediction|manage.*prediction|declare.*winner|lock.*betting|admin.*panel|admin.*page|admin.*tab|who.*admin)\b/.test(t)) return 'INFO_ADMIN'
   // Security
-  if (/\b(secure|security|safe|secrets|private key|leaked|exposed|github.*secret|is it safe|is.*secure|hack|vulnerable)\b/.test(t)) return 'INFO_SECURITY'
+  if (/\b(secure|security|safe|is it safe|is.*secure|hack|vulnerable|how.*protect|funds.*safe|my.*fund)\b/.test(t)) return 'INFO_SECURITY'
   if (/\b(novel|unique|different|special|innovative|standout|sets it apart|why.*use|why rialo calls|what makes.*special|what makes.*unique|what makes.*different|whats.*different|whats.*special|whats.*unique|how.*different|why.*different|key features?|main features?|best features?|cool features?|what.*doing|what.*built|what.*offer)\b/.test(t)) return 'INFO_NOVEL'
   if (/\b(future|roadmap|whats next|next plan|coming soon|upcoming|plans for|vision|what.*next|next.*plan)\b/.test(t)) return 'INFO_FUTURE'
   if (/\b(what is rialo calls|what.*rialo calls|about rialo calls|explain rialo)\b/.test(t)) return 'INFO_RIALO'
@@ -616,50 +619,40 @@ export default function CallsGuide() {
 
   function handleInfoAdmin() {
     addBot(
-      "🛠️ Admin Panel — What admins can do:\n\n" +
-      "── Predictions Tab ──\n" +
-      "• Create predictions — set title, description, banner, deadline, category\n" +
-      "• Use templates for quick creation\n" +
-      "• Lock betting (manual or auto via X Resolver)\n" +
-      "• Declare winner (YES or NO) — opens claiming for winners\n" +
-      "• Extend deadline, refund, or delete markets\n\n" +
-      "── Polls Tab ──\n" +
-      "• View community poll submissions\n" +
-      "• Close voting rounds and declare top 3 winners\n" +
-      "• Delete inappropriate polls\n\n" +
-      "── 🔭 Resolver Tab ──\n" +
-      "• Activate X monitoring on any open prediction\n" +
-      "• Set handle, condition type, and target threshold\n" +
-      "• View live progress of all monitored predictions\n" +
-      "• See history of all auto-locked predictions\n" +
-      "• Deactivate monitoring at any time\n\n" +
-      "Admin wallets: 0x2601Ab18...E195 and 0x18C8D508...45B8",
+      "🛠️ Rialo Calls is managed by a trusted admin team.\n\n" +
+      "Admins are responsible for:\n" +
+      "• Creating high-quality predictions for the community\n" +
+      "• Keeping markets accurate and fair\n" +
+      "• Declaring outcomes once a real-world event resolves\n" +
+      "• Managing community polls and selecting top ideas each round\n" +
+      "• Activating the X Resolver on predictions tied to Twitter/X events\n\n" +
+      "Once a winner is declared, payouts are handled automatically by the smart contract — no admin can touch your funds. Claiming is always open to winners directly on-chain. 🔒",
       [
-        { label: '🔭 X Resolver',      intent: 'INFO_RESOLVER'     },
-        { label: '🏗️ Architecture',    intent: 'INFO_ARCHITECTURE'  },
-        { label: '↩ Menu',             intent: 'MENU'               },
+        { label: '🔭 X Resolver',   intent: 'INFO_RESOLVER'  },
+        { label: '🔐 Is it secure?', intent: 'INFO_SECURITY'  },
+        { label: '↩ Menu',          intent: 'MENU'            },
       ]
     )
   }
 
   function handleInfoSecurity() {
     addBot(
-      "🔐 Security — How Rialo Calls protects everything:\n\n" +
-      "── Secrets ──\n" +
-      "All private keys and API tokens live only in GitHub Actions Secrets — never in code. The repository has zero hardcoded secrets. Verified clean.\n\n" +
-      "── Session Wallet ──\n" +
-      "Your session key is stored only in your browser's localStorage. It never leaves your device. No server holds it. If you clear localStorage, you sign once again with MetaMask to restore it.\n\n" +
-      "── Smart Contracts ──\n" +
-      "All bet logic is enforced on-chain. Supabase is only a display mirror. Even if Supabase were hacked, no funds can be moved — only the contract can do that.\n\n" +
-      "── Admin Access ──\n" +
-      "Admin functions are gated by wallet address on-chain (ADMIN_ONE / ADMIN_TWO). Frontend also checks via isAdmin() before showing the admin page.\n\n" +
-      "── Supabase Anon Key ──\n" +
-      "The anon key is public by design (it's in the Vite bundle everyone can see). The dangerous key (service role) is GitHub Secret only.\n\n" +
-      "Bottom line: funds are protected by smart contracts, secrets are protected by GitHub, and identity is protected by wallet signatures. 🔒",
+      "🔐 Your funds and assets are safe on Rialo Calls.\n\n" +
+      "💎 Smart contract protected — All bet amounts, payouts, and refunds are enforced entirely by the smart contract. No person — not even the team — can move your funds. Claiming is always available directly to you on-chain.\n\n" +
+      "🔑 Your session wallet — Your session key lives only in your own browser. It never touches any server. If you clear your browser data, just sign once with MetaMask to restore it instantly.\n\n" +
+      "🔒 All backend secrets — Private keys and API tokens are stored securely in our deployment environment, never in the source code. The codebase has been verified clean.\n\n" +
+      "✅ Bottom line: your RLO is safe in the contract, your session key is safe in your browser, and nothing about your funds depends on trusting us — it's all on-chain. 🎯",
       [
-        { label: '🏗️ Architecture', intent: 'INFO_ARCHITECTURE' },
-        { label: '↩ Menu',         intent: 'MENU'               },
+        { label: '🏗️ How it works', intent: 'INFO_ARCHITECTURE' },
+        { label: '↩ Menu',          intent: 'MENU'               },
       ]
+    )
+  }
+
+  function handleSensitive() {
+    addBot(
+      "I can't help with that. 🔒\n\nCalls Guide is here to help you bet, claim, explore markets, and learn about Rialo Calls — not to share internal configuration or credentials.\n\nIf you have a security concern, reach out to the team directly.",
+      [{ label: '↩ Menu', intent: 'MENU' }]
     )
   }
 
@@ -734,6 +727,7 @@ export default function CallsGuide() {
       case 'INFO_ARCHITECTURE': handleInfoArchitecture();       break
       case 'INFO_ADMIN':        handleInfoAdmin();              break
       case 'INFO_SECURITY':     handleInfoSecurity();           break
+      case 'SENSITIVE':         handleSensitive();              break
       case 'HOW_TO_BET':        handleHowToBet();               break
       case 'HELP':              handleHelp();                   break
       default:
