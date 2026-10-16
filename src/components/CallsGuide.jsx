@@ -486,7 +486,7 @@ export default function CallsGuide() {
       setPending({ action: 'POLL', data: { title: stripped, description: '' } })
     } else {
       addBot(
-        "Tell me your bet idea! Submit it as a poll and the community will vote on it.\n\nJust type your idea title (min 10 characters):\nExample: Will Rialo token reach $1 by Q2 2026",
+        "Tell me your bet idea! Submit it as a poll and the community will vote on it.\n\nJust type your idea title (min 10 characters):\nExample: Will Elon Musk post more than 10 times on X this week?",
         [{ label: '↩ Menu', intent: 'MENU' }]
       )
       setPollInput(true)
@@ -985,12 +985,6 @@ export default function CallsGuide() {
             display: 'flex', alignItems: 'center', gap: '10px',
             background: C.surface,
           }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '50%',
-              background: 'rgba(223,219,207,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '16px',
-            }}>🎯</div>
             <div>
               <div style={{ color: C.cream, fontSize: '14px', fontWeight: '600' }}>Calls Guide</div>
               <div style={{ color: C.dim, fontSize: '11px' }}>Rialo Calls assistant</div>

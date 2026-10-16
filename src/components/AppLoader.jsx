@@ -7,8 +7,8 @@ const LABELS = ['Loading', 'Connecting wallet', 'Loading profile', 'Almost ready
  * Once `done` prop is true, plays a fade-out animation then unmounts.
  */
 export default function AppLoader({ done }) {
-  const [visible, setVisible] = useState(true)
-  const [fadeOut, setFadeOut] = useState(false)
+  const [visible, setVisible] = useState(() => !done)  // start hidden if already initialised
+  const [fadeOut, setFadeOut] = useState(() => done)   // start faded if already initialised
   const [labelIdx, setLabelIdx] = useState(0)
 
   // Cycle through status labels every 2.5s so user knows progress is happening
