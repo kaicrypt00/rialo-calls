@@ -157,10 +157,14 @@ export default function MintProfileModal() {
         // The actual photo is stored in Supabase via saveProfileToSupabase below.
         args: [name.trim(), bio.trim(), '', xUsername.trim().replace('@', '')],
         value: fee,
-        gas: 300000n,
+        // No hardcoded gas — let viem auto-estimate so it never runs out
       })
 
-      await publicClient.waitForTransactionReceipt({ hash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+      // If the tx ran out of gas or the contract reverted, stop here — don't show success
+      if (receipt.status === 'reverted') {
+        throw new Error('Transaction failed on-chain (out of gas or contract rejected). Check your ETH balance and try again.')
+      }
       setTxHash(hash)
       setDone(true)
       showConfirmed(hash)
