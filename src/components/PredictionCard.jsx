@@ -156,7 +156,10 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
           functionName: 'approve',
           args: [CONTRACT_ADDRESSES.BETTING_POOL, MAX],
         })
-        await publicClient.waitForTransactionReceipt({ hash: approveTxHash })
+        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTxHash })
+        if (approveReceipt.status === 'reverted') {
+          throw new Error('RLO approval failed. Please try again.')
+        }
       }
 
       // 3. Place bet
@@ -166,10 +169,13 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         abi: BETTING_POOL_ABI,
         functionName: 'placeBet',
         args: [BigInt(prediction.id), betSide === 'YES' ? SIDE.YES : SIDE.NO, amountWei],
-        gas: 250000n,
+        // No hardcoded gas — auto-estimate
       })
 
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const betReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (betReceipt.status === 'reverted') {
+        throw new Error('Bet transaction failed on-chain. You may have already bet on this market, or the market is locked.')
+      }
       showConfirmed(txHash)
 
       if (betInsertedRef.current !== txHash) {

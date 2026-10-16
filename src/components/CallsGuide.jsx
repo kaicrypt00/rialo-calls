@@ -758,12 +758,40 @@ function CallsGuideCore() {
         const { market, amount, side } = data
         addBot(`⏳ Placing bet — ${amount} RLO on ${side}...`)
         const amountWei = parseUnits(amount.toString(), 18)
+
+        // Check RLO allowance — approve first if needed (prevents Arithmetic revert)
+        const allowance = await publicClient.readContract({
+          address: CONTRACT_ADDRESSES.RLO_TOKEN,
+          abi: RLO_ABI,
+          functionName: 'allowance',
+          args: [sessionWallet.address, CONTRACT_ADDRESSES.BETTING_POOL],
+        })
+        if (allowance < amountWei) {
+          addBot('⏳ Approving RLO spend...')
+          const MAX = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+          const approveHash = await sessionWallet.client.writeContract({
+            address: CONTRACT_ADDRESSES.RLO_TOKEN,
+            abi: RLO_ABI,
+            functionName: 'approve',
+            args: [CONTRACT_ADDRESSES.BETTING_POOL, MAX],
+          })
+          const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash })
+          if (approveReceipt.status === 'reverted') {
+            throw new Error('RLO approval failed. Please try again.')
+          }
+        }
+
         const txHash = await sessionWallet.client.writeContract({
           address: CONTRACT_ADDRESSES.BETTING_POOL,
           abi: BETTING_POOL_ABI,
           functionName: 'placeBet',
           args: [BigInt(market.id), side === 'YES' ? 1 : 2, amountWei],
         })
+        // Wait for on-chain confirmation before touching Supabase
+        const betReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+        if (betReceipt.status === 'reverted') {
+          throw new Error('Bet failed on-chain. You may have already bet on this market, or the market is locked.')
+        }
 
         // Update Supabase
         const yesPool = side === 'YES'
