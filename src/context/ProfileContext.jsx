@@ -70,9 +70,15 @@ export function ProfileProvider({ children }) {
     return () => window.removeEventListener('rialo:session-wallet-ready', onSessionReady)
   }, [])
 
-  // Check if session wallet has a profile on chain
-  // Falls back to mainAddress if no session wallet yet
-  const lookupAddress = sessionAddress || address
+  // Whether this wallet has a stored session key.
+  // Used to determine which address to query and whether to wait for derivation.
+  const hasStoredSession = !!(address && localStorage.getItem('rc_sw_' + address.toLowerCase()))
+
+  // Only query for the address that actually holds the profile.
+  // If a session key exists but sessionAddress hasn't been derived yet, disable the
+  // query entirely (returns undefined) — this prevents hasProfile(MetaMask)=false
+  // from firing before the correct session wallet address is known.
+  const lookupAddress = sessionAddress || (hasStoredSession ? null : address)
   const { data: hasProfileOnChain, refetch: refetchHasProfile } = useReadContract({
     address: CONTRACT_ADDRESSES.PROFILE_REGISTRY,
     abi: PROFILE_REGISTRY_ABI,
@@ -181,12 +187,9 @@ export function ProfileProvider({ children }) {
     }
 
     if (status === 'connected') {
-      // If the user has a stored session wallet, wait for sessionAddress to be derived
-      // before querying hasProfileOnChain — otherwise we'd query the wrong address
-      // and mark initialized too early (causing the 5-6s profile flash).
-      const hasStoredSession = address
-        && !!localStorage.getItem('rc_sw_' + address.toLowerCase())
-      if (hasStoredSession && !sessionAddress) return  // wait one more render
+      // lookupAddress is null when hasStoredSession=true but sessionAddress isn't derived
+      // yet — query is disabled, hasProfileOnChain=undefined, so we just wait.
+      if (hasStoredSession && !sessionAddress) return  // wait for session address derivation
 
       if (hasProfileOnChain === undefined) return
       if (hasProfileOnChain === false) {
