@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
-import { useAccount }       from 'wagmi'
+import { useAccount, useWalletClient } from 'wagmi'
 import { usePublicClient }  from 'wagmi'
 import { createPublicClient, http, parseEther } from 'viem'
 import { sepolia } from 'viem/chains'
 import { CONTRACT_ADDRESSES, BETTING_POOL_ABI, POLL_REGISTRY_ADDRESS, POLL_REGISTRY_ABI } from '../config/contracts'
 import { supabase } from '../config/supabase'
 import { useToast } from '../context/ToastContext'
-import { useSessionWallet } from '../context/SessionWalletContext'
+
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { uploadToSupabase, formatRitualNum } from '../utils/format'
@@ -199,7 +199,8 @@ function CreatePredictionSection() {
   const [showTemplates, setShowTemplates] = useState(false)
 
   const publicClient = usePublicClient()
-  const { sessionWallet } = useSessionWallet()
+  const { data: walletClient } = useWalletClient()
+  const { address } = useAccount()
   const [isPending, setIsPending] = useState(false)
 
   useEffect(() => { fetchTemplates() }, [])
@@ -245,7 +246,7 @@ function CreatePredictionSection() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setErrors({})
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     setUploading(true)
 
     try {
@@ -273,7 +274,7 @@ function CreatePredictionSection() {
       showPending('Publishing prediction...')
       setIsPending(true)
 
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'createPrediction',
@@ -284,7 +285,7 @@ function CreatePredictionSection() {
 
       // Log to wallet_transactions
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Created prediction: ${title.trim().slice(0, 60)}${title.trim().length > 60 ? '...' : ''}`,
         tx_hash: txHash,
@@ -547,7 +548,8 @@ function ManagePredictionsSection() {
   const [declareModal, setDeclareModal] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
 
-  const { sessionWallet } = useSessionWallet()
+  const { data: walletClient } = useWalletClient()
+  const { address } = useAccount()
   const [isBusyLocal, setIsBusyLocal] = useState(false)
 
   const [activeTab, setActiveTab] = useState('active')
@@ -582,12 +584,12 @@ function ManagePredictionsSection() {
   }
 
   async function doLock(pred) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     setActivePredId(pred.id); setActiveAction('lock'); setLockModal(null)
     setIsBusyLocal(true)
     showPending('Locking betting...')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'lockBetting',
@@ -595,7 +597,7 @@ function ManagePredictionsSection() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Locked prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
         tx_hash: txHash,
@@ -610,12 +612,12 @@ function ManagePredictionsSection() {
   }
 
   async function doUnlock(pred) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     setActivePredId(pred.id); setActiveAction('unlock')
     setIsBusyLocal(true)
     showPending('Unlocking betting...')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'unlockBetting',
@@ -623,7 +625,7 @@ function ManagePredictionsSection() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Unlocked prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
         tx_hash: txHash,
@@ -638,14 +640,14 @@ function ManagePredictionsSection() {
   }
 
   async function doDeclare(pred, side) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     const sideLabel = side === 1 ? 'YES' : 'NO'
     setActivePredId(pred.id); setActiveAction('declare')
     setActiveWinnerSide(sideLabel); setDeclareModal(null)
     setIsBusyLocal(true)
     showPending('Declaring winner...')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'declareWinner',
@@ -653,7 +655,7 @@ function ManagePredictionsSection() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Declared winner ${sideLabel} on #${pred.id}: ${pred.title.slice(0, 50)}`,
         tx_hash: txHash,
@@ -728,14 +730,14 @@ function ManagePredictionsSection() {
   }
 
   async function doExtend(pred, newDeadline) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     setActivePredId(pred.id); setActiveAction('extend')
     setExtendModal({ ...extendModal, newDeadline })
     setIsBusyLocal(true)
     showPending('Extending deadline...')
     const deadlineSec = BigInt(Math.floor(new Date(newDeadline).getTime() / 1000))
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'extendDeadline',
@@ -743,7 +745,7 @@ function ManagePredictionsSection() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Extended deadline on #${pred.id} to ${new Date(newDeadline).toLocaleDateString()}`,
         tx_hash: txHash,
@@ -761,12 +763,12 @@ function ManagePredictionsSection() {
   }
 
   async function doDelete(pred) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     setActivePredId(pred.id); setActiveAction('delete'); setDeleteModal(null)
     setIsBusyLocal(true)
     showPending('Deleting prediction...')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'deletePrediction',
@@ -774,7 +776,7 @@ function ManagePredictionsSection() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Deleted prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
         tx_hash: txHash,
@@ -1158,7 +1160,8 @@ function TemplatesInlineSection() {
 // ============================================================
 function AdminPollsTab() {
   const { showConfirmed, showFailed } = useToast()
-  const { sessionWallet } = useSessionWallet()
+  const { data: walletClient } = useWalletClient()
+  const { address } = useAccount()
   const [polls, setPolls]       = useState([])
   const [history, setHistory]   = useState([])
   const [selected, setSelected] = useState(new Set())
@@ -1220,9 +1223,9 @@ function AdminPollsTab() {
   }
 
   async function handleDelete(pollId) {
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'deletePoll',
@@ -1230,7 +1233,7 @@ function AdminPollsTab() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Deleted poll #${String(pollId)}`,
         tx_hash: txHash,
@@ -1244,12 +1247,12 @@ function AdminPollsTab() {
 
   async function handleCloseRound() {
     if (selected.size !== 3) return
-    if (!sessionWallet) return showFailed('Activate your Rialo Calls Wallet first')
+    if (!walletClient) return showFailed('Connect your main wallet first')
     const winnerIds = [...selected].map(id => BigInt(id))
     setClosing(true)
     showPending('Closing round...')
     try {
-      const txHash = await sessionWallet.client.writeContract({
+      const txHash = await walletClient.writeContract({
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'closeRound',
@@ -1257,7 +1260,7 @@ function AdminPollsTab() {
       })
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
-        wallet_address: sessionWallet.address,
+        wallet_address: address,
         type: 'admin_action',
         label: `Closed poll round #${currentRound} — winners selected`,
         tx_hash: txHash,
