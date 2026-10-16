@@ -141,9 +141,9 @@ export default function ProfilePage() {
         abi: BETTING_POOL_ABI,
         functionName: 'claimWinnings',
         args: [BigInt(predictionId)],
-        gas: 200000n,
       })
-      await pub.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('claimWinnings reverted on-chain.')
       fetchBets()
       fetchStats()
     } catch (e) {

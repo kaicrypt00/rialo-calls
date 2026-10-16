@@ -558,6 +558,7 @@ function ManagePredictionsSection() {
 
   const { data: walletClient } = useWalletClient()
   const { address } = useAccount()
+  const publicClient = usePublicClient()
   const [isBusyLocal, setIsBusyLocal] = useState(false)
 
   const [activeTab, setActiveTab] = useState('active')
@@ -604,6 +605,8 @@ function ManagePredictionsSection() {
         functionName: 'lockBetting',
         args: [BigInt(pred.id)],
       })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('lockBetting reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -633,6 +636,8 @@ function ManagePredictionsSection() {
         functionName: 'unlockBetting',
         args: [BigInt(pred.id)],
       })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('unlockBetting reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -664,6 +669,8 @@ function ManagePredictionsSection() {
         functionName: 'declareWinner',
         args: [BigInt(pred.id), side],
       })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('declareWinner reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -755,6 +762,8 @@ function ManagePredictionsSection() {
         functionName: 'extendDeadline',
         args: [BigInt(pred.id), deadlineSec],
       })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('extendDeadline reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -787,6 +796,8 @@ function ManagePredictionsSection() {
         functionName: 'deletePrediction',
         args: [BigInt(pred.id)],
       })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('deletePrediction reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -1172,7 +1183,7 @@ function TemplatesInlineSection() {
 // Section 4 — Poll Management (Admin) — on-chain via PollRegistry
 // ============================================================
 function AdminPollsTab() {
-  const { showConfirmed, showFailed } = useToast()
+  const { showPending, showConfirmed, showFailed } = useToast()
   const { data: walletClient } = useWalletClient()
   const { address } = useAccount()
   const [polls, setPolls]       = useState([])
@@ -1245,6 +1256,9 @@ function AdminPollsTab() {
         functionName: 'deletePoll',
         args: [pollId],
       })
+      showPending('Waiting for confirmation...')
+      const receiptDel = await pollPublicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receiptDel.status === 'reverted') throw new Error('deletePoll reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
@@ -1273,6 +1287,8 @@ function AdminPollsTab() {
         functionName: 'closeRound',
         args: [[winnerIds[0], winnerIds[1], winnerIds[2]]],
       })
+      const receiptClose = await pollPublicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receiptClose.status === 'reverted') throw new Error('closeRound reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,

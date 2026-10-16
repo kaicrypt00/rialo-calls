@@ -72,7 +72,8 @@ export default function FaucetPage() {
         functionName: 'claim',
       })
       // Wait for the block to be mined before reading state
-      await waitForReceipt(hash)
+      const receipt = await waitForReceipt(hash)
+      if (receipt.status === 'reverted') throw new Error('Faucet claim reverted on-chain.')
 
       supabase.from('wallet_transactions').insert({
         wallet_address: sessionWallet.address.toLowerCase(),

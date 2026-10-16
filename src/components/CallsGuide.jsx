@@ -858,6 +858,8 @@ function CallsGuideCore() {
               functionName: 'claimWinnings',
               args: [BigInt(c.id)],
             })
+            const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+            if (claimReceipt.status === 'reverted') throw new Error('claimWinnings reverted')
             await supabase.from('bets').update({ result: 'claimed' }).eq('prediction_id', c.id).eq('wallet_address', sessionWallet.address.toLowerCase())
             await logToWallet('claim', `Claimed winnings — ${c.title.slice(0, 50)}`, parseFloat(c.amount), txHash)
             totalClaimed += parseFloat(c.amount)
@@ -882,6 +884,8 @@ function CallsGuideCore() {
               functionName: 'claimRefund',
               args: [BigInt(r.id)],
             })
+            const refundReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+            if (refundReceipt.status === 'reverted') throw new Error('claimRefund reverted')
             await supabase.from('bets').update({ result: 'refunded' }).eq('prediction_id', r.id).eq('wallet_address', sessionWallet.address.toLowerCase())
             await logToWallet('refund', `Refund — ${r.title.slice(0, 50)}`, parseFloat(r.amount), txHash)
             total += parseFloat(r.amount)
@@ -904,6 +908,8 @@ function CallsGuideCore() {
           args: [badgeId],
           value: BigInt('1000000000000000'),
         })
+        const badgeReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+        if (badgeReceipt.status === 'reverted') throw new Error('mintBadge reverted on-chain.')
         await logToWallet('admin_action', `Minted ${badgeName} badge`, null, txHash)
         addBot(
           `✅ ${badgeIcon} ${badgeName} badge minted on-chain!\nTx: ${txHash.slice(0, 10)}...`,
@@ -920,6 +926,8 @@ function CallsGuideCore() {
           functionName: 'submitPoll',
           args: [title, description],
         })
+        const pollReceipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+        if (pollReceipt.status === 'reverted') throw new Error('Poll submission reverted on-chain.')
         await logToWallet('poll_submit', `Submitted poll: ${title.slice(0, 60)}`, null, txHash)
         addBot(
           `✅ Poll idea submitted!\n\n💡 "${title}"\n\nThe community can now vote on it in The Poll tab.`,

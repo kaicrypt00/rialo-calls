@@ -77,7 +77,8 @@ export default function BadgesTab() {
         value: BigInt('1000000000000000'),
       })
       showPending('Waiting for confirmation...')
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('mintBadge reverted on-chain.')
 
       // ── Optimistic update: show Earned immediately ──
       setBadgeStatuses(prev => prev.map((v, i) => i === badgeId ? true : v))

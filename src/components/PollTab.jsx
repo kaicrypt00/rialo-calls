@@ -154,7 +154,8 @@ export default function PollTab() {
       })
 
       showPending('Waiting for confirmation...')
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('Vote reverted on-chain.')
 
       // Only update UI AFTER tx is confirmed
       setVotedPolls(prev => new Set([...prev, pollIdStr]))
@@ -196,7 +197,8 @@ export default function PollTab() {
       })
 
       showPending('Waiting for confirmation...')
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('Poll submission reverted on-chain.')
       showConfirmed(txHash, 'Idea submitted on-chain!')
 
       // Log to wallet_transactions

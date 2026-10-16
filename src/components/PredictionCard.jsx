@@ -214,9 +214,9 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         abi: BETTING_POOL_ABI,
         functionName: 'claimWinnings',
         args: [BigInt(prediction.id)],
-        gas: 200000n,
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('claimWinnings reverted on-chain.')
       showConfirmed(txHash)
       await loadChainData()
       await loadBalances()
@@ -248,9 +248,9 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         abi: BETTING_POOL_ABI,
         functionName: 'claimRefund',
         args: [BigInt(prediction.id)],
-        gas: 150000n,
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('claimRefund reverted on-chain.')
       showConfirmed(txHash)
       await loadChainData()
       await loadBalances()
