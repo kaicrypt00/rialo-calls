@@ -51,6 +51,17 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
     loadChainData()
   }, [readAddress, prediction.id, isDeleted])
 
+  // Re-read chain data when a bet is placed via CallsGuide
+  useEffect(() => {
+    function handleBetPlaced(e) {
+      if (Number(e.detail?.predictionId) === Number(prediction.id) && readAddress) {
+        loadChainData()
+      }
+    }
+    window.addEventListener('rialo-bet-placed', handleBetPlaced)
+    return () => window.removeEventListener('rialo-bet-placed', handleBetPlaced)
+  }, [prediction.id, readAddress])
+
   async function loadChainData() {
     try {
       const [locked, bet] = await Promise.all([

@@ -839,6 +839,8 @@ function CallsGuideCore() {
 
         await logToWallet('bet', `Bet ${side} ${amount} RLO — ${market.title.slice(0, 50)}`, amount, txHash)
         await loadBalances()
+        // Signal PredictionCards to re-read chain data (hides YES/NO buttons, shows bet)
+        window.dispatchEvent(new CustomEvent('rialo-bet-placed', { detail: { predictionId: market.id } }))
         addBot(
           `✅ Bet placed!\n\n🎯 ${market.title.slice(0, 60)}\n💠 ${side} — ${amount} RLO\nTx: ${txHash.slice(0, 10)}...`,
           [{ label: '📋 View markets', intent: 'MARKETS' }, { label: '↩ Menu', intent: 'MENU' }]
