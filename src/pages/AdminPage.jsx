@@ -275,6 +275,7 @@ function CreatePredictionSection() {
       setIsPending(true)
 
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'createPrediction',
@@ -590,6 +591,7 @@ function ManagePredictionsSection() {
     showPending('Locking betting...')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'lockBetting',
@@ -618,6 +620,7 @@ function ManagePredictionsSection() {
     showPending('Unlocking betting...')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'unlockBetting',
@@ -648,6 +651,7 @@ function ManagePredictionsSection() {
     showPending('Declaring winner...')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'declareWinner',
@@ -738,6 +742,7 @@ function ManagePredictionsSection() {
     const deadlineSec = BigInt(Math.floor(new Date(newDeadline).getTime() / 1000))
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'extendDeadline',
@@ -769,6 +774,7 @@ function ManagePredictionsSection() {
     showPending('Deleting prediction...')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'deletePrediction',
@@ -1226,6 +1232,7 @@ function AdminPollsTab() {
     if (!walletClient) return showFailed('Connect your main wallet first')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'deletePoll',
@@ -1253,6 +1260,7 @@ function AdminPollsTab() {
     showPending('Closing round...')
     try {
       const txHash = await walletClient.writeContract({
+          account: address,
         address: POLL_REGISTRY_ADDRESS,
         abi: POLL_REGISTRY_ABI,
         functionName: 'closeRound',
