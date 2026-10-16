@@ -265,11 +265,11 @@ function CreatePredictionSection() {
         chainNowSec = BigInt(Math.floor(Date.now() / 1000))
       }
 
-      const SEC_30_DAYS  = BigInt(30 * 24 * 3600)
       const SEC_75_YEARS = BigInt(75 * 365 * 24 * 3600)
+      // Use admin's selected deadline when set, otherwise 75-year no-deadline
       const contractDeadline = noDeadline
         ? chainNowSec + SEC_75_YEARS
-        : chainNowSec + SEC_30_DAYS
+        : BigInt(Math.floor(new Date(deadline).getTime() / 1000))
 
       showPending('Publishing prediction...')
       setIsPending(true)
@@ -607,14 +607,6 @@ function ManagePredictionsSection() {
         const r = lockResults[i]
         if (r.status === 'fulfilled') {
           locks[p.id] = r.value
-          // Self-heal Supabase if on-chain lock state differs from stored status
-          const supabaseLocked = p.status === 'locked'
-          if (r.value !== supabaseLocked) {
-            supabase.from('predictions_display')
-              .update({ status: r.value ? 'locked' : 'open' })
-              .eq('id', p.id)
-              .then(() => {})
-          }
         }
       })
       setOnChainLocks(locks)
