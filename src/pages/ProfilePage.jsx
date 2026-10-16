@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, useDisconnect, usePublicClient } from 'wagmi'
-import { formatUnits } from 'viem'
+import { formatEther } from 'viem'
 import { useProfile } from '../context/ProfileContext'
 import { useSessionWallet } from '../context/SessionWalletContext'
 import { supabase } from '../config/supabase'
