@@ -13,6 +13,7 @@ import { shortAddress, formatRitualNum, formatMonthYear, copyToClipboard, buildX
 import { EXPLORER_URL } from '../config/wagmi'
 import { CONTRACT_ADDRESSES, BETTING_POOL_ABI } from '../config/contracts'
 import { useSound } from '../context/SoundContext'
+import { useToast } from '../context/ToastContext'
 
 const TABS = ['My Calls', 'Badges']
 const PAGE_SIZE = 20
@@ -24,8 +25,9 @@ export default function ProfilePage() {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
   const { profile, refreshProfile, profileLoading } = useProfile()
-  const { sessionWallet, hasSessionWallet } = useSessionWallet()
+  const { sessionWallet, hasSessionWallet, loadBalances } = useSessionWallet()
   const { playClaimSound } = useSound()
+  const { showPending, showConfirmed, showFailed } = useToast()
   const publicClient = usePublicClient()
 
   const [activeTab, setActiveTab] = useState(0)
@@ -132,6 +134,7 @@ export default function ProfilePage() {
     playClaimSound()
     setClaimingId(predictionId)
     setClaimPending(true)
+    showPending('Claiming winnings…')
     try {
       const { createPublicClient, http } = await import('viem')
       const { sepolia } = await import('viem/chains')
@@ -142,12 +145,30 @@ export default function ProfilePage() {
         functionName: 'claimWinnings',
         args: [BigInt(predictionId)],
       })
+      showPending('Waiting for confirmation…')
       const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
       if (receipt.status === 'reverted') throw new Error('claimWinnings reverted on-chain.')
+
+      // Show confirmed toast with explorer link
+      showConfirmed(txHash, 'Winnings claimed! 🏆')
+
+      // Log to session wallet history so it appears in Recent Activity
+      const betRow = bets.find(b => b.prediction_id === predictionId)
+      const marketTitle = betRow?.predictions_display?.title?.slice(0, 50) || `Prediction #${predictionId}`
+      supabase.from('wallet_transactions').insert({
+        wallet_address: sessionWallet.address.toLowerCase(),
+        type: 'claim',
+        label: `Claimed winnings — ${marketTitle}`,
+        tx_hash: txHash,
+      }).then(() => {})
+
+      // Refresh balance pill + bet list
+      await loadBalances()
       fetchBets()
       fetchStats()
     } catch (e) {
       console.error('Claim error:', e)
+      showFailed(e)
     } finally {
       setClaimingId(null)
       setClaimPending(false)
