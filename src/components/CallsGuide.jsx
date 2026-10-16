@@ -804,7 +804,6 @@ function CallsGuideCore() {
         await supabase.from('predictions_display').update({
           yes_pool: yesPool,
           no_pool: noPool,
-          total_bettors: (parseInt(market.total_bettors) || 0) + 1,
         }).eq('id', market.id)
 
         await supabase.from('bets').insert({
