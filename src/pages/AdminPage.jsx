@@ -1013,7 +1013,7 @@ function ManagePredictionsSection() {
       {extendModal && (
         <AdminModal title="Extend Deadline" onClose={() => setExtendModal(null)}>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            Max +24 hours from now. Can only be done once per prediction.
+            Set any future date. New deadline must be later than the current on-chain deadline.
           </p>
           <div className="form-group">
             <label className="form-label">New Deadline</label>
@@ -1021,7 +1021,6 @@ function ManagePredictionsSection() {
               type="datetime-local"
               className="input"
               min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
-              max={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
               value={extendModal.newDeadline}
               onChange={e => setExtendModal(p => ({ ...p, newDeadline: e.target.value }))}
             />
