@@ -559,6 +559,7 @@ function ManagePredictionsSection() {
   const { data: walletClient } = useWalletClient()
   const { address } = useAccount()
   const publicClient = usePublicClient()
+  const [onChainLocks, setOnChainLocks] = useState({})
   const [isBusyLocal, setIsBusyLocal] = useState(false)
 
   const [activeTab, setActiveTab] = useState('active')
@@ -588,7 +589,37 @@ function ManagePredictionsSection() {
       .select('*')
       .in('status', statuses)
       .order('created_at', { ascending: false })
-    setPredictions(data || [])
+    const preds = data || []
+    setPredictions(preds)
+
+    // Read on-chain isBettingLocked for active preds — source of truth for lock state
+    if (activeTab === 'active' && preds.length > 0) {
+      const lockResults = await Promise.allSettled(
+        preds.map(p => publicClient.readContract({
+          address: CONTRACT_ADDRESSES.BETTING_POOL,
+          abi: BETTING_POOL_ABI,
+          functionName: 'isBettingLocked',
+          args: [BigInt(p.id)],
+        }))
+      )
+      const locks = {}
+      preds.forEach((p, i) => {
+        const r = lockResults[i]
+        if (r.status === 'fulfilled') {
+          locks[p.id] = r.value
+          // Self-heal Supabase if on-chain lock state differs from stored status
+          const supabaseLocked = p.status === 'locked'
+          if (r.value !== supabaseLocked) {
+            supabase.from('predictions_display')
+              .update({ status: r.value ? 'locked' : 'open' })
+              .eq('id', p.id)
+              .then(() => {})
+          }
+        }
+      })
+      setOnChainLocks(locks)
+    }
+
     setLoading(false)
   }
 
@@ -888,10 +919,10 @@ function ManagePredictionsSection() {
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <span>ID: <span className="font-mono">{pred.id}</span></span>
                   <span>Status: <strong style={{
-                    color: pred.status === 'locked' ? 'var(--amber)' :
+                    color: (onChainLocks[pred.id] ?? pred.status === 'locked') ? 'var(--amber)' :
                            pred.status === 'yes_wins' || pred.status === 'no_wins' ? 'var(--accent-primary)' : 'var(--text-secondary)'
                   }}>
-                    {pred.status.toUpperCase()}
+                    {(onChainLocks[pred.id] ?? pred.status === 'locked') ? 'LOCKED' : pred.status.toUpperCase()}
                   </strong></span>
                   {pred.winner && (
                     <span>Winner: <strong style={{ color: pred.winner === 'YES' ? 'var(--accent-primary)' : 'var(--danger)' }}>{pred.winner}</strong></span>
@@ -907,11 +938,11 @@ function ManagePredictionsSection() {
                 </div>
               </div>
               <span className={`status-pill ${
-                pred.status === 'locked' ? 'status-locked' :
+                (onChainLocks[pred.id] ?? pred.status === 'locked') ? 'status-locked' :
                 pred.status === 'yes_wins' ? 'status-settled-yes' :
                 pred.status === 'no_wins' ? 'status-settled-no' : 'status-live'
               }`} style={{ flexShrink: 0 }}>
-                {pred.status === 'locked' ? 'LOCKED' :
+                {(onChainLocks[pred.id] ?? pred.status === 'locked') ? 'LOCKED' :
                  pred.status === 'yes_wins' ? 'YES WINS' :
                  pred.status === 'no_wins' ? 'NO WINS' : 'LIVE'}
               </span>
@@ -929,7 +960,7 @@ function ManagePredictionsSection() {
               ) : (
                 <>
                   {/* Extend Deadline — only for open predictions with a real deadline */}
-                  {!pred.no_deadline && pred.status !== 'locked' && (
+                  {!pred.no_deadline && !(onChainLocks[pred.id] ?? pred.status === 'locked') && (
                     <button
                       className="btn btn-ghost btn-sm"
                       onClick={() => setExtendModal({ ...pred, newDeadline: '' })}
@@ -939,8 +970,8 @@ function ManagePredictionsSection() {
                     </button>
                   )}
 
-                  {/* Lock/Unlock Betting */}
-                  {pred.status !== 'locked' ? (
+                  {/* Lock/Unlock Betting — based on on-chain state, not Supabase */}
+                  {!(onChainLocks[pred.id] ?? pred.status === 'locked') ? (
                     <button
                       className="btn btn-sm"
                       style={{ background: 'rgba(191,169,106,0.1)', color: 'var(--amber)', border: '1px solid rgba(191,169,106,0.3)' }}
