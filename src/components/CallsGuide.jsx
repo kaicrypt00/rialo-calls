@@ -486,7 +486,7 @@ export default function CallsGuide() {
       setPending({ action: 'POLL', data: { title: stripped, description: '' } })
     } else {
       addBot(
-        "Tell me your bet idea! Submit it as a poll and the community will vote on it.\n\nJust type your idea title (min 10 characters):\nExample: Will Elon Musk post more than 10 times on X this week?",
+        "Tell me your bet idea! Submit it as a poll and the community will vote on it.\n\nJust type your idea title (min 10 characters):\nExample: Will Eric share the SharkCat picture at least 2 times in the next Builders Hub?",
         [{ label: '↩ Menu', intent: 'MENU' }]
       )
       setPollInput(true)
