@@ -96,8 +96,7 @@ const MENU_CHIPS = [
 ]
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CallsGuide() {
-  const location = useLocation()
+function CallsGuideCore() {
   const { sessionWallet, ethBalance, rloBalance, loadBalances } = useSessionWallet()
   const { profile, navState } = useProfile()
 
@@ -110,9 +109,6 @@ export default function CallsGuide() {
   const [betFlow, setBetFlow]       = useState(null)  // { markets } — waiting for user to pick
   const messagesEndRef              = useRef(null)
   const inputRef                    = useRef(null)
-
-  // Hide on Landing page
-  if (location.pathname === '/') return null
 
   // Auto scroll
   useEffect(() => {
@@ -1138,4 +1134,13 @@ export default function CallsGuide() {
       )}
     </>
   )
+}
+
+// Wrapper — only reads location, renders nothing on landing page.
+// This prevents the Rules of Hooks violation that occurred when the early
+// return was placed after useState/useRef but before useEffect declarations.
+export default function CallsGuide() {
+  const location = useLocation()
+  if (location.pathname === '/') return null
+  return <CallsGuideCore />
 }

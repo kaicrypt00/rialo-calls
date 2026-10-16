@@ -15,12 +15,6 @@ import { RLO_ABI, CONTRACT_ADDRESSES } from '../config/contracts'
 const SESSION_KEY_PREFIX = 'rc_sw_'
 const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
 
-// Created once at module level — never needs to change per render
-const publicClient = createPublicClient({
-  chain: sepolia,
-  transport: http(RPC_URL),
-})
-
 const SIGN_MESSAGE =
   'Rialo Calls: Activate your Rialo Calls Wallet.\n\n' +
   'This creates a secure session wallet for seamless betting without transaction popups.\n\n' +
@@ -39,6 +33,11 @@ export function SessionWalletProvider({ children }) {
   const [rloBalance, setRloBalance] = useState('0')
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
   const [recentTxs, setRecentTxs] = useState([])
+
+  const publicClient = createPublicClient({
+    chain: sepolia,
+    transport: http(RPC_URL),
+  })
 
   // On mount or wallet change: restore session wallet from localStorage
   useEffect(() => {
