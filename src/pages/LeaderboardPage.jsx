@@ -66,6 +66,7 @@ export default function LeaderboardPage() {
       .from('leaderboard')
       .select('*')
       .gt('total_calls', 0)
+      .gt('total_pnl', 0)
       .order('total_pnl', { ascending: false })
       .limit(10)
 
