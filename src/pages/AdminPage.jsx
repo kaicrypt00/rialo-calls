@@ -282,6 +282,13 @@ function CreatePredictionSection() {
         args: [title.trim(), desc.trim(), url, contractDeadline],
       })
 
+      // Wait for actual on-chain confirmation before reading state
+      showPending('Waiting for on-chain confirmation...')
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') {
+        throw new Error('createPrediction transaction reverted on-chain.')
+      }
+
       showConfirmed(txHash)
 
       // Log to wallet_transactions
@@ -292,8 +299,7 @@ function CreatePredictionSection() {
         tx_hash: txHash,
       })
 
-      // Wait briefly then read new prediction ID from contract
-      await new Promise(r => setTimeout(r, 3000))
+      // Read new prediction ID — tx is confirmed so totalPredictions is up to date
       const newId = await publicClient.readContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
@@ -313,7 +319,8 @@ function CreatePredictionSection() {
         no_pool: 0,
         category: category || 'community_calls',
       })
-      if (sbErr) console.error('Supabase insert error:', sbErr.message)
+      // Surface Supabase errors to admin — don't silently swallow them
+      if (sbErr) throw new Error(`Prediction created on-chain ✅ but failed to save to display: ${sbErr.message}`)
 
       resetForm()
     } catch (err) {
