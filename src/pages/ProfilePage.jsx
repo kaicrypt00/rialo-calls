@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAccount, useDisconnect, usePublicClient } from 'wagmi'
-import { formatEther } from 'viem'
+import { formatEther, createPublicClient, http } from 'viem'
+import { sepolia } from 'viem/chains'
 import { useProfile } from '../context/ProfileContext'
 import { useSessionWallet } from '../context/SessionWalletContext'
 import { supabase } from '../config/supabase'
@@ -136,9 +137,12 @@ export default function ProfilePage() {
     setClaimPending(true)
     showPending('Claiming winnings…')
     try {
-      const { createPublicClient, http } = await import('viem')
-      const { sepolia } = await import('viem/chains')
-      const pub = createPublicClient({ chain: sepolia, transport: http('https://ethereum-sepolia-rpc.publicnode.com') })
+      // Use a static publicClient — no dynamic imports, so no stale-chunk risk
+      // across Vercel deployments. Same pattern used in PredictionCard.
+      const staticClient = createPublicClient({
+        chain: sepolia,
+        transport: http('https://ethereum-sepolia-rpc.publicnode.com'),
+      })
       const txHash = await sessionWallet.client.writeContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
@@ -146,7 +150,7 @@ export default function ProfilePage() {
         args: [BigInt(predictionId)],
       })
       showPending('Waiting for confirmation…')
-      const receipt = await pub.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await staticClient.waitForTransactionReceipt({ hash: txHash })
       if (receipt.status === 'reverted') throw new Error('claimWinnings reverted on-chain.')
 
       // Show confirmed toast with explorer link

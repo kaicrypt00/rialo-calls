@@ -14,6 +14,19 @@ import { DataPrefetchProvider } from './context/DataPrefetchContext'
 import { SoundProvider } from './context/SoundContext'
 import App from './App'
 
+// ─── Stale-chunk safety net ───────────────────────────────────────────────────
+// After a Vercel redeploy, old hashed chunk URLs (e.g. /assets/index-ABC123.js)
+// return 404. Any lazy import() will throw "Failed to fetch dynamically imported
+// module". We catch that globally and do ONE hard reload to pick up the new build.
+// A flag in sessionStorage prevents infinite reload loops.
+window.addEventListener('vite:preloadError', () => {
+  const reloadKey = 'rc_chunk_reload'
+  if (!sessionStorage.getItem(reloadKey)) {
+    sessionStorage.setItem(reloadKey, '1')
+    window.location.reload()
+  }
+})
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 10_000 },
