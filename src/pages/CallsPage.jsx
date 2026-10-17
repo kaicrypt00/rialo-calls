@@ -4,6 +4,7 @@ import { useDataCache } from '../context/DataPrefetchContext'
 import Navbar from '../components/Navbar'
 import PredictionCard from '../components/PredictionCard'
 import PollTab from '../components/PollTab'
+import SettledTab from '../components/SettledTab'
 import Footer from '../components/Footer'
 import ErrorBoundary from '../components/ErrorBoundary'
 import MusicToggleButton from '../components/MusicToggleButton'
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'all_calls',       label: 'All Calls' },
   { id: 'community_calls', label: 'Community Calls' },
   { id: 'official_calls',  label: 'Official Calls' },
+  { id: 'settled',         label: 'Settled' },
   { id: 'polls',           label: 'The Poll' },
 ]
 
@@ -135,7 +137,7 @@ export default function CallsPage() {
             color: 'var(--text-primary)',
             margin: 0,
           }}>
-            {activeTab === 'polls' ? 'The Poll' : 'Active Calls'}
+            {activeTab === 'polls' ? 'The Poll' : activeTab === 'settled' ? 'Settled' : 'Active Calls'}
           </h1>
 
           <MusicToggleButton />
@@ -168,6 +170,8 @@ export default function CallsPage() {
         {/* Content */}
         {activeTab === 'polls' ? (
           <PollTab />
+        ) : activeTab === 'settled' ? (
+          <SettledTab />
         ) : (
           <>
             {/* Loading skeletons */}
