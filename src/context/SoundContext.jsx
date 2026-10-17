@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 
 const SoundContext = createContext(null)
 
-const CACHE_NAME = 'rialo-audio-cache-v1'
+const CACHE_NAME = 'rialo-audio-cache-v2'
 
 const AUDIO_MANIFEST = {
   click: '/audio/click.mp3',
