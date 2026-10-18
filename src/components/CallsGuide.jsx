@@ -947,10 +947,12 @@ function CallsGuideCore() {
         )
       } else if (msg.toLowerCase().includes('already claimed')) {
         addBot('Already claimed this period. Come back in 30 days.', [{ label: '↩ Menu', intent: 'MENU' }], true)
-      } else if (msg.toLowerCase().includes('already placed')) {
+      } else if (msg.toLowerCase().includes('already placed') || msg.toLowerCase().includes('already bet')) {
         addBot("You've already bet on this market.", [{ label: '📋 Other markets', intent: 'MARKETS' }, { label: '↩ Menu', intent: 'MENU' }], true)
+      } else if (msg.toLowerCase().includes('bets are lo') || msg.toLowerCase().includes('locked') || msg.toLowerCase().includes('betting is')) {
+        addBot('🔒 Betting is closed on this prediction. It has already been locked.', [{ label: '📋 Other markets', intent: 'MARKETS' }, { label: '↩ Menu', intent: 'MENU' }], true)
       } else {
-        addBot(`Transaction failed: ${msg.slice(0, 80)}`, [{ label: '↩ Menu', intent: 'MENU' }], true)
+        addBot(`Something went wrong: ${msg.slice(0, 80)}`, [{ label: '↩ Menu', intent: 'MENU' }], true)
       }
     }
 

@@ -400,7 +400,7 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
           ) : isRefunded ? (
             <span className="status-pill status-refunded">REFUNDED</span>
           ) : isLocked ? (
-            <span className="status-pill status-locked">{isExpired ? '🔒 EXPIRED' : '🔒 LOCKED'}</span>
+            <span className="status-pill status-locked">{isExpired ? '🔒 Closed' : '🔒 Locked'}</span>
           ) : (
             <span className="status-pill status-live">
               <span className="live-dot" />

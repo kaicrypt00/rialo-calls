@@ -26,6 +26,13 @@ export function ToastProvider({ children }) {
       const revertMatch = error.message.match(/reverted with reason string '(.+?)'/)
       errorMsg = revertMatch ? revertMatch[1] : error.message.slice(0, 120)
     }
+    // Friendly messages for known contract revert reasons
+    const lower = errorMsg.toLowerCase()
+    if (lower.includes('bets are lo') || lower.includes('betting is locked') || lower.includes('locked')) {
+      errorMsg = 'Betting is closed on this prediction.'
+    } else if (lower.includes('already placed') || lower.includes('already bet')) {
+      errorMsg = "You've already placed a bet on this prediction."
+    }
     setToast({ type: 'failed', message: errorMsg })
     setTimeout(() => setToast(null), 6000)
   }, [])
