@@ -3,7 +3,7 @@
 // Runs on GitHub Actions. Never runs on localhost.
 // DO NOT log the admin private key.
 
-import { createWalletClient, http } from 'viem'
+import { createWalletClient, createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
 import { createClient } from '@supabase/supabase-js'
@@ -18,14 +18,28 @@ const ADMIN_KEY    = process.env.RESOLVER_ADMIN_KEY
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY
 
+// ─── VALIDATE ENV VARS — fail fast with clear message ────────────────────────
+const missing = []
+if (!ADMIN_KEY)    missing.push('RESOLVER_ADMIN_KEY')
+if (!SUPABASE_URL) missing.push('SUPABASE_URL')
+if (!SUPABASE_KEY) missing.push('SUPABASE_ANON_KEY')
+if (missing.length > 0) {
+  console.error('❌ Missing required GitHub Secrets:', missing.join(', '))
+  console.error('   Add these secrets in: GitHub repo → Settings → Secrets and variables → Actions')
+  process.exit(1)
+}
+
 // BettingPool contract address on Sepolia
 const BETTING_POOL = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
 
 // Public Sepolia RPC — no API key needed
 const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
 
-// fxtwitter is an open X proxy API — no auth required
-const FXTWITTER = 'https://api.fxtwitter.com'
+// fxtwitter base URLs
+// NOTE: api.fxtwitter.com/{handle} returns user profile only — NO tweets.
+// For tweets, we use the RSS feed: fxtwitter.com/{handle}/feed.xml
+const FXTWITTER_API = 'https://api.fxtwitter.com'
+const FXTWITTER_RSS = 'https://fxtwitter.com'
 
 // Minimal ABI — we only need lockBetting(uint256 id)
 const LOCK_ABI = [
@@ -52,6 +66,12 @@ const walletClient = createWalletClient({
   transport: http(RPC_URL),
 })
 
+// publicClient needed to wait for transaction receipts
+const publicClient = createPublicClient({
+  chain: sepolia,
+  transport: http(RPC_URL),
+})
+
 // ─── FXTWITTER HELPERS ────────────────────────────────────────────────────────
 
 const FX_HEADERS = {
@@ -59,39 +79,102 @@ const FX_HEADERS = {
   'Accept': 'application/json',
 }
 
-async function fetchUserData(handle) {
+// Fetch user profile data (followers, tweet count, pfp, verified status).
+// NOTE: This endpoint does NOT return a tweets array.
+async function fetchUserProfile(handle) {
   try {
-    const res = await fetch(`${FXTWITTER}/${handle}`, { headers: FX_HEADERS })
+    const res = await fetch(`${FXTWITTER_API}/${handle}`, { headers: FX_HEADERS })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    return {
-      user:   data?.user   ?? null,
-      tweets: data?.tweets ?? [],
-    }
+    return data?.user ?? null
   } catch (e) {
+    console.warn(`  ⚠️  fetchUserProfile(${handle}) failed: ${e.message}`)
     return null
   }
 }
 
+// Fetch a single tweet by ID.
 async function fetchTweet(handle, tweetId) {
   try {
-    const res = await fetch(`${FXTWITTER}/${handle}/status/${tweetId}`, { headers: FX_HEADERS })
+    const res = await fetch(`${FXTWITTER_API}/${handle}/status/${tweetId}`, { headers: FX_HEADERS })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     return data?.tweet ?? null
   } catch (e) {
+    console.warn(`  ⚠️  fetchTweet(${handle}/${tweetId}) failed: ${e.message}`)
     return null
   }
 }
 
-// Get the single most recent tweet for a handle.
-// Required for next_tweet_* condition types.
+// ─── RSS FEED TWEET FETCHING ──────────────────────────────────────────────────
+// fxtwitter.com/{handle}/feed.xml returns a proper RSS feed with recent tweets.
+// This is the only reliable way to get the user's tweet list without the Twitter API.
+
+/**
+ * Parse RSS XML and return an array of tweet objects:
+ * { id, url, title, pubDate, timestamp (unix seconds) }
+ * Only includes tweets by the target handle (not retweets from others).
+ */
+function parseRssTweets(xml, handle) {
+  const items = []
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g
+  let match
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const itemXml = match[1]
+
+    const linkMatch   = itemXml.match(/<link>(https?:\/\/[^<]+)<\/link>/)
+    const pubMatch    = itemXml.match(/<pubDate>([^<]+)<\/pubDate>/)
+    const titleMatch  = itemXml.match(/<title><!\[CDATA\[([^\]]*)\]\]><\/title>/) ||
+                        itemXml.match(/<title>([^<]*)<\/title>/)
+
+    if (!linkMatch) continue
+
+    const url = linkMatch[1].trim()
+
+    // Only count tweets from the target handle (skip retweets by others)
+    const urlLower = url.toLowerCase()
+    if (!urlLower.includes(`x.com/${handle.toLowerCase()}/status/`)) continue
+
+    const statusMatch = url.match(/\/status\/(\d+)/)
+    if (!statusMatch) continue
+
+    const id        = statusMatch[1]
+    const pubDate   = pubMatch ? pubMatch[1].trim() : null
+    const timestamp = pubDate ? Math.floor(new Date(pubDate).getTime() / 1000) : 0
+    const title     = titleMatch ? titleMatch[1].trim() : ''
+
+    items.push({ id, url, title, pubDate, timestamp })
+  }
+  return items
+}
+
+/**
+ * Fetch recent tweets for a handle via RSS feed.
+ * Returns array sorted newest-first.
+ */
+async function fetchTweetsViaRss(handle) {
+  try {
+    const res = await fetch(`${FXTWITTER_RSS}/${handle}/feed.xml`, {
+      headers: { 'User-Agent': 'RialoCallsResolver/1.0', 'Accept': 'application/rss+xml, application/xml, text/xml' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const xml = await res.text()
+    const tweets = parseRssTweets(xml, handle)
+    // Sort newest first
+    tweets.sort((a, b) => b.timestamp - a.timestamp)
+    return tweets
+  } catch (e) {
+    console.warn(`  ⚠️  fetchTweetsViaRss(${handle}) failed: ${e.message}`)
+    return []
+  }
+}
+
+/**
+ * Get the single most recent tweet for a handle (via RSS).
+ */
 async function fetchLatestTweet(handle) {
-  const userData = await fetchUserData(handle)
-  if (!userData || !userData.tweets || userData.tweets.length === 0) return null
-  return [...userData.tweets].sort(
-    (a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0)
-  )[0] ?? null
+  const tweets = await fetchTweetsViaRss(handle)
+  return tweets.length > 0 ? tweets[0] : null
 }
 
 // ─── CONDITION CHECKERS ───────────────────────────────────────────────────────
@@ -109,16 +192,11 @@ async function checkCondition(prediction, monitor) {
   } = monitor
 
   // ── GROUP A: Account-level conditions ──────────────────────────────────────
-  if (['follower_count', 'tweet_count', 'pfp_change',
-       'verification_change', 'new_post'].includes(condition_type)) {
-
-    const userData = await fetchUserData(handle)
-    if (!userData) return { error: `fxtwitter returned null for @${handle}` }
-
-    const { user, tweets } = userData
+  if (['follower_count', 'tweet_count', 'pfp_change', 'verification_change'].includes(condition_type)) {
+    const user = await fetchUserProfile(handle)
+    if (!user) return { error: `fxtwitter returned null profile for @${handle}` }
 
     if (condition_type === 'follower_count') {
-      if (!user) return { error: `No user data returned for @${handle}` }
       const current = user.followers ?? 0
       return {
         triggered: current >= parseInt(threshold),
@@ -129,7 +207,6 @@ async function checkCondition(prediction, monitor) {
     }
 
     if (condition_type === 'tweet_count') {
-      if (!user) return { error: `No user data returned for @${handle}` }
       const current = user.tweets ?? 0
       return {
         triggered: current >= parseInt(threshold),
@@ -140,8 +217,7 @@ async function checkCondition(prediction, monitor) {
     }
 
     if (condition_type === 'pfp_change') {
-      if (!user) return { error: `No user data returned for @${handle}` }
-      const currentPfp = user.avatar ?? ''
+      const currentPfp = user.avatar_url ?? user.avatar ?? ''
       if (!last_pfp_url) {
         return {
           triggered: false,
@@ -160,8 +236,7 @@ async function checkCondition(prediction, monitor) {
     }
 
     if (condition_type === 'verification_change') {
-      if (!user) return { error: `No user data returned for @${handle}` }
-      const currentVerified = user.verified ?? false
+      const currentVerified = user.verification?.verified ?? user.verified ?? false
       if (last_verified === null || last_verified === undefined) {
         return {
           triggered: false,
@@ -180,34 +255,52 @@ async function checkCondition(prediction, monitor) {
         updatedMonitor: changed ? { ...monitor, last_verified: currentVerified } : monitor,
       }
     }
+  }
 
-    if (condition_type === 'new_post') {
-      const sortedTweets = [...tweets].sort(
-        (a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0)
-      )
-      const latestTweet = sortedTweets[0]
-      if (!latestTweet) return { error: `No tweets found for @${handle}` }
+  // ── new_post: triggers when @handle posts any new tweet after activation ────
+  if (condition_type === 'new_post') {
+    const activationTs = activation_timestamp ?? 0
 
-      const latestId = latestTweet.id ?? ''
-      const activationTs = activation_timestamp ?? 0
+    // Fetch tweets via RSS (the only working method — fxtwitter JSON user
+    // endpoint does NOT return tweets)
+    const tweets = await fetchTweetsViaRss(handle)
 
-      if (!last_tweet_id) {
-        return {
-          triggered: false,
-          currentValue: 'Baseline tweet ID recorded',
-          rawData: { tweet_id: latestId },
-          updatedMonitor: { ...monitor, last_tweet_id: latestId },
-        }
-      }
+    if (tweets.length === 0) {
+      return { error: `No tweets found via RSS for @${handle}` }
+    }
 
-      const tweetTime = new Date(latestTweet.created_at ?? 0).getTime() / 1000
-      const isNew = latestId !== last_tweet_id && tweetTime >= activationTs
+    const latestTweet = tweets[0]
+    const latestId    = latestTweet.id
+
+    // First run: record baseline so we know what "new" means
+    if (!last_tweet_id) {
+      console.log(`    📝 Baseline recorded: latest tweet ID = ${latestId} (${latestTweet.pubDate})`)
       return {
-        triggered: isNew,
-        currentValue: isNew ? `New tweet: ${latestId}` : 'No new post',
-        rawData: { latest_tweet_id: latestId, created_at: latestTweet.created_at },
-        updatedMonitor: isNew ? { ...monitor, last_tweet_id: latestId } : monitor,
+        triggered: false,
+        currentValue: `Baseline recorded: ${latestId}`,
+        rawData: { tweet_id: latestId, timestamp: latestTweet.timestamp },
+        updatedMonitor: { ...monitor, last_tweet_id: latestId },
       }
+    }
+
+    // Check if there's a newer tweet than our baseline AND posted after activation
+    const isNew = latestId !== last_tweet_id && latestTweet.timestamp >= activationTs
+
+    console.log(`    📊 new_post check: latest=${latestId} | baseline=${last_tweet_id} | activationTs=${activationTs} | tweetTs=${latestTweet.timestamp} | isNew=${isNew}`)
+
+    return {
+      triggered: isNew,
+      currentValue: isNew
+        ? `New tweet: ${latestId} (${latestTweet.pubDate})`
+        : `No new post (latest: ${latestId})`,
+      rawData: {
+        latest_tweet_id: latestId,
+        last_tweet_id,
+        timestamp: latestTweet.timestamp,
+        activation_timestamp: activationTs,
+        title: latestTweet.title?.slice(0, 100),
+      },
+      updatedMonitor: isNew ? { ...monitor, last_tweet_id: latestId } : monitor,
     }
   }
 
@@ -219,21 +312,21 @@ async function checkCondition(prediction, monitor) {
     let trackingId = monitor.tracking_tweet_id ?? null
 
     if (!trackingId) {
-      const latestTweet = await fetchLatestTweet(handle)
-      if (!latestTweet) return { error: `Could not fetch tweets for @${handle}` }
-
-      const tweetTime = new Date(latestTweet.created_at ?? 0).getTime() / 1000
-      if (tweetTime >= activationTs) {
-        trackingId = latestTweet.id
-        console.log(`  Found target tweet for @${handle}: ${trackingId}`)
-      } else {
+      // Find the first tweet posted after activationTs via RSS
+      const tweets = await fetchTweetsViaRss(handle)
+      const afterActivation = tweets.filter(t => t.timestamp >= activationTs)
+      if (afterActivation.length === 0) {
         return {
           triggered: false,
           currentValue: 'Waiting for new tweet after activation',
-          rawData: { latest_tweet_id: latestTweet.id },
+          rawData: { latest_tweet_id: tweets[0]?.id },
           updatedMonitor: monitor,
         }
       }
+      // The oldest tweet after activation (smallest timestamp in the filtered list)
+      const target = afterActivation[afterActivation.length - 1]
+      trackingId = target.id
+      console.log(`  Found target tweet for @${handle}: ${trackingId} (${target.pubDate})`)
     }
 
     const tweet = await fetchTweet(handle, trackingId)
@@ -291,6 +384,7 @@ async function run() {
   console.log('════════════════════════════════════════')
   console.log(' X RESOLVER — Rialo Calls')
   console.log(` Started: ${new Date().toISOString()}`)
+  console.log(`   Admin: ${account.address}`)
   console.log('════════════════════════════════════════\n')
 
   const { data: predictions, error: fetchError } = await supabase
@@ -336,6 +430,7 @@ async function run() {
       }
     }
 
+    // Rate-limit: 1.5s between API calls to avoid fxtwitter blocks
     await new Promise(r => setTimeout(r, 1500))
 
     const result = await checkCondition(pred, monitor)
@@ -359,13 +454,16 @@ async function run() {
     console.log(`    Target:  ${monitor.threshold ?? 'change detected'}`)
     console.log(`    Status:  ${result.triggered ? '🔒 TRIGGERED' : '👀 monitoring'}`)
 
+    // Persist updated monitor state (e.g. last_tweet_id, tracking_tweet_id, last_pfp_url)
     if (JSON.stringify(result.updatedMonitor) !== JSON.stringify(monitor)) {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('predictions_display')
         .update({ x_monitor: result.updatedMonitor })
         .eq('id', pred.id)
+      if (updateErr) console.warn(`    ⚠️  Failed to update x_monitor: ${updateErr.message}`)
     }
 
+    // Always log the check result
     await supabase.from('x_monitor_logs').insert({
       prediction_id: pred.id,
       handle,
@@ -386,23 +484,43 @@ async function run() {
           abi: LOCK_ABI,
           functionName: 'lockBetting',
           args: [BigInt(pred.id)],
+          gas: 150000n,
         })
-        console.log(`    ✅ Locked. Tx: ${txHash}`)
+        console.log(`    ⏳ Waiting for lock tx receipt: ${txHash}`)
 
-        await supabase
-          .from('predictions_display')
-          .update({ status: 'locked' })
-          .eq('id', pred.id)
+        // Wait for mining — critical to confirm success before updating Supabase
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 })
 
-        await supabase.from('x_monitor_logs').insert({
-          prediction_id: pred.id,
-          handle,
-          condition_type: condition,
-          current_value: result.currentValue,
-          threshold: String(monitor.threshold ?? ''),
-          triggered: true,
-          action_taken: `Locked on-chain — tx: ${txHash}`,
-        })
+        if (receipt.status === 'success') {
+          console.log(`    ✅ Locked! Block: ${receipt.blockNumber} Tx: ${txHash}`)
+          console.log(`       https://sepolia.etherscan.io/tx/${txHash}`)
+
+          await supabase
+            .from('predictions_display')
+            .update({ status: 'locked' })
+            .eq('id', pred.id)
+
+          await supabase.from('x_monitor_logs').insert({
+            prediction_id: pred.id,
+            handle,
+            condition_type: condition,
+            current_value: result.currentValue,
+            threshold: String(monitor.threshold ?? ''),
+            triggered: true,
+            action_taken: `Locked on-chain — tx: ${txHash}`,
+          })
+        } else {
+          console.error(`    ❌ Lock tx reverted: ${txHash}`)
+          await supabase.from('x_monitor_logs').insert({
+            prediction_id: pred.id,
+            handle,
+            condition_type: condition,
+            current_value: result.currentValue,
+            triggered: true,
+            action_taken: null,
+            error: `Lock tx reverted: ${txHash}`,
+          })
+        }
 
       } catch (e) {
         const errMsg = e?.shortMessage ?? e?.message ?? 'Unknown error'
