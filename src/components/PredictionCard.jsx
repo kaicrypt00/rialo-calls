@@ -119,8 +119,19 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
   const userClaimed = userBetData?.[2]
   const hasBet      = !!(userSide && Number(userSide) > 0)
 
-  const isExpired   = !prediction.no_deadline && prediction.deadline && (timeLeft <= 0)
-  const isLocked    = prediction.status === 'locked' || bettingLocked || isExpired
+  // isExpired: only true when we have a deadline, no_deadline is false, AND the countdown
+  // has actually ticked down to 0 (timeLeft starts at 0 before first tick, so we also
+  // guard with deadline being in the past to avoid false positives on first render).
+  const deadlineMs  = prediction.deadline ? new Date(prediction.deadline).getTime() : null
+  const isExpired   = !prediction.no_deadline && deadlineMs && deadlineMs < Date.now() && timeLeft <= 0
+
+  // isLocked: Supabase status is the primary source of truth.
+  // On-chain bettingLocked is only treated as a lock if Supabase ALSO shows the market
+  // as non-open — this prevents a recycled contract market ID from locking a brand new
+  // open prediction that shares the same numeric ID on-chain.
+  const dbClosed    = prediction.status !== 'open'
+  const isLocked    = prediction.status === 'locked' || isExpired || (bettingLocked && dbClosed)
+
   const showBetButtons = !isLocked && !isSettled && !isRefunded && !hasBet
   const winnerSide  = prediction.status === 'yes_wins' ? 'YES' : prediction.status === 'no_wins' ? 'NO' : null
   const canClaim    = isSettled && hasBet && !userClaimed && winnerSide && (
