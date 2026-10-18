@@ -299,12 +299,32 @@ function CreatePredictionSection() {
         tx_hash: txHash,
       })
 
-      // Read new prediction ID — tx is confirmed so totalPredictions is up to date
+      // Read new prediction ID — totalPredictions is the counter the contract uses
       const newId = await publicClient.readContract({
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
         functionName: 'totalPredictions',
       })
+
+      // If the contract recycled a previously-deleted ID that was locked on-chain,
+      // clear the stale lock so the new prediction starts fresh and open.
+      const isStillLocked = await publicClient.readContract({
+        address: CONTRACT_ADDRESSES.BETTING_POOL,
+        abi: BETTING_POOL_ABI,
+        functionName: 'isBettingLocked',
+        args: [newId],
+      })
+      if (isStillLocked) {
+        showPending('Clearing stale lock on recycled ID...')
+        const unlockHash = await walletClient.writeContract({
+          account: address,
+          address: CONTRACT_ADDRESSES.BETTING_POOL,
+          abi: BETTING_POOL_ABI,
+          functionName: 'unlockBetting',
+          args: [newId],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: unlockHash })
+      }
 
       const YEAR_2099_ISO = '2099-01-01T00:00:00.000Z'
       const { error: sbErr } = await supabase.from('predictions_display').insert({
