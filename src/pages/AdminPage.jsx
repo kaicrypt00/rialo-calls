@@ -1699,13 +1699,31 @@ function ResolverTab() {
                 const log        = getLatestLog(pred.id)
                 const hasThresh  = needsThreshold(m.condition_type)
                 const current    = log?.current_value || 'Not checked yet'
-                const target     = m.threshold ? parseInt(m.threshold) : null
+                // Only read threshold for conditions that actually need it
+                const target     = hasThresh && m.threshold ? parseInt(m.threshold) : null
                 const currentNum = log
                   ? parseInt((log.current_value || '').replace(/[^0-9]/g, ''))
                   : 0
                 const pct = hasThresh && target
                   ? Math.min(100, Math.round((currentNum / target) * 100))
                   : null
+                // Human-readable condition labels
+                const CONDITION_LABELS = {
+                  new_post:            'New Post',
+                  pfp_change:          'Profile Picture Change',
+                  verification_change: 'Verification Change',
+                  follower_count:      'Followers',
+                  tweet_count:         'Tweet Count',
+                  next_tweet_views:    'Next Tweet Views',
+                  next_tweet_likes:    'Next Tweet Likes',
+                  next_tweet_reposts:  'Next Tweet Reposts',
+                  next_tweet_replies:  'Next Tweet Replies',
+                  post_views:          'Specific Post Views',
+                  post_likes:          'Specific Post Likes',
+                  post_reposts:        'Specific Post Reposts',
+                  post_replies:        'Specific Post Replies',
+                }
+                const condLabel = CONDITION_LABELS[m.condition_type] ?? m.condition_type.replace(/_/g, ' ')
 
                 return (
                   <div key={pred.id} style={{
@@ -1725,8 +1743,8 @@ function ResolverTab() {
                           {pred.title}
                         </div>
                         <div style={{ color: C.gray, fontSize: '13px', marginBottom: hasThresh ? '10px' : '0' }}>
-                          @{m.handle} · {m.condition_type.replace(/_/g, ' ')}
-                          {target ? ` · target: ${target.toLocaleString()}` : ''}
+                          @{m.handle} · {condLabel}
+                          {hasThresh && target ? ` · target: ${target.toLocaleString()}` : ''}
                         </div>
                         {hasThresh && target && (
                           <div>
