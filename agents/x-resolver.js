@@ -426,7 +426,7 @@ async function run() {
           condition_type: condition,
           current_value: 'Deadline passed — bet auto-locked',
           threshold: String(monitor.threshold ?? ''),
-          triggered: false,
+          triggered: true,
           action_taken: 'Deadline passed — bet auto-locked by contract',
         })
         continue
