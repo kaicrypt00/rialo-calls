@@ -413,18 +413,21 @@ async function run() {
     console.log(`─── Prediction #${pred.id}: ${pred.title.slice(0, 60)}`)
     console.log(`    @${handle} · ${condition}`)
 
-    if (monitor.has_deadline && pred.deadline) {
-      const deadline = new Date(pred.deadline).getTime()
-      if (Date.now() > deadline) {
-        console.log('    ⏰ Deadline passed — condition not triggered in time')
+    // ── Deadline check — skip predictions whose deadline has already passed.
+    // The BettingPool contract auto-locks bets once the deadline is reached,
+    // so the resolver has nothing to do. Log once and move on.
+    if (pred.deadline) {
+      const deadlineTs = new Date(pred.deadline).getTime()
+      if (!isNaN(deadlineTs) && Date.now() > deadlineTs) {
+        console.log('    ⏰ Deadline passed — bet is auto-locked, skipping resolver check')
         await supabase.from('x_monitor_logs').insert({
           prediction_id: pred.id,
           handle,
           condition_type: condition,
-          current_value: 'Deadline passed — not triggered',
+          current_value: 'Deadline passed — bet auto-locked',
           threshold: String(monitor.threshold ?? ''),
           triggered: false,
-          action_taken: 'Deadline passed — awaiting admin decision',
+          action_taken: 'Deadline passed — bet auto-locked by contract',
         })
         continue
       }
@@ -450,8 +453,11 @@ async function run() {
       continue
     }
 
+    const thresholdDisplay = (monitor.threshold !== undefined && monitor.threshold !== null && monitor.threshold !== '')
+      ? monitor.threshold
+      : 'change detected'
     console.log(`    Current: ${result.currentValue}`)
-    console.log(`    Target:  ${monitor.threshold ?? 'change detected'}`)
+    console.log(`    Target:  ${thresholdDisplay}`)
     console.log(`    Status:  ${result.triggered ? '🔒 TRIGGERED' : '👀 monitoring'}`)
 
     // Persist updated monitor state (e.g. last_tweet_id, tracking_tweet_id, last_pfp_url)
