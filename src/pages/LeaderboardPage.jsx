@@ -12,7 +12,7 @@ export default function LeaderboardPage() {
 
   // Use cache if warm, local state if cold
   const [localCallers, setLocalCallers] = useState(null)
-  const [localStats,   setLocalStats]   = useState(null)
+  const [localStats, setLocalStats] = useState(null)
   const [localLoading, setLocalLoading] = useState(false)
 
   // On mount: if cache is cold, do own fetch; if warm, instant render
@@ -43,10 +43,10 @@ export default function LeaderboardPage() {
       .limit(5000)
 
     const allBets = betsData || []
-    const totalVolume  = allBets.reduce((s, b) => s + parseFloat(b.amount || 0), 0)
-    const callsMade    = allBets.length
-    const callerSet    = new Set(allBets.map(b => b.wallet_address?.toLowerCase()))
-    const biggestCall  = allBets.reduce((max, b) => Math.max(max, parseFloat(b.amount || 0)), 0)
+    const totalVolume = allBets.reduce((s, b) => s + parseFloat(b.amount || 0), 0)
+    const callsMade = allBets.length
+    const callerSet = new Set(allBets.map(b => b.wallet_address?.toLowerCase()))
+    const biggestCall = allBets.reduce((max, b) => Math.max(max, parseFloat(b.amount || 0)), 0)
     const { count: resolved } = await supabase
       .from('predictions_display')
       .select('*', { count: 'exact', head: true })
@@ -62,6 +62,12 @@ export default function LeaderboardPage() {
   }
 
   async function fetchCallers() {
+    // Always fetch agent row (is_agent = true) regardless of P&L
+    const { data: agentRows } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .eq('is_agent', true)
+
     const { data } = await supabase
       .from('leaderboard')
       .select('*')
@@ -70,11 +76,18 @@ export default function LeaderboardPage() {
       .order('total_pnl', { ascending: false })
       .limit(10)
 
-    if (data && data.length > 0) {
-      const addrs = data.map(d => d.wallet_address.toLowerCase())
+    // Merge: agent first (deduplicated), then top callers
+    const agentAddrs = new Set((agentRows || []).map(r => r.wallet_address?.toLowerCase()))
+    const combined = [
+      ...(agentRows || []),
+      ...(data || []).filter(c => !agentAddrs.has(c.wallet_address?.toLowerCase())),
+    ]
+
+    if (combined.length > 0) {
+      const addrs = combined.map(d => d.wallet_address.toLowerCase())
       const { data: profs } = await supabase.from('profiles').select('wallet_address, name, pfp_url').in('wallet_address', addrs)
       const profMap = new Map((profs || []).map(p => [p.wallet_address.toLowerCase(), p]))
-      setLocalCallers(data.map(c => {
+      setLocalCallers(combined.map(c => {
         const p = profMap.get(c.wallet_address.toLowerCase())
         return { ...c, name: p?.name || c.name, pfp_url: p?.pfp_url !== undefined ? p.pfp_url : c.pfp_url }
       }))
@@ -84,7 +97,7 @@ export default function LeaderboardPage() {
   }
 
   // Resolved values: prefer cache, fall back to local
-  const stats   = cachedBetsStats   ?? localStats
+  const stats = cachedBetsStats ?? localStats
   const callers = cachedLeaderboard ?? localCallers ?? []
   const loading = (cachedLeaderboard === null && cachedBetsStats === null) && localLoading
 
@@ -305,14 +318,14 @@ function ArenaStatCard({ icon, label, value, accent }) {
       transition: 'transform 0.25s ease, box-shadow 0.25s ease',
       cursor: 'default',
     }}
-    onMouseEnter={e => {
-      e.currentTarget.style.transform = 'translateY(-3px)'
-      e.currentTarget.style.boxShadow = '0 6px 24px rgba(223,219,207,0.15)'
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.transform = 'none'
-      e.currentTarget.style.boxShadow = 'none'
-    }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-3px)'
+        e.currentTarget.style.boxShadow = '0 6px 24px rgba(223,219,207,0.15)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = 'none'
+        e.currentTarget.style.boxShadow = 'none'
+      }}
     >
       <div style={{
         display: 'flex',
@@ -349,59 +362,59 @@ function PodiumCard({ caller, rank, isFirst }) {
   // Tiered cream — brightest at #1, stepping down
   const rankStyles = {
     1: {
-      color:       '#DFDBCF',
-      colorRgb:    '223,219,207',
-      border:      'rgba(223,219,207,0.45)',
-      bg:          'linear-gradient(155deg, rgba(223,219,207,0.1) 0%, #0C0C0C 50%, #0E0E0E 100%)',
-      badgeBg:     'rgba(223,219,207,0.15)',
-      shadow:      '0 0 40px rgba(223,219,207,0.12)',
-      glow:        '0 0 16px rgba(223,219,207,0.35)',
-      spinBorder:  true,
+      color: '#DFDBCF',
+      colorRgb: '223,219,207',
+      border: 'rgba(223,219,207,0.45)',
+      bg: 'linear-gradient(155deg, rgba(223,219,207,0.1) 0%, #0C0C0C 50%, #0E0E0E 100%)',
+      badgeBg: 'rgba(223,219,207,0.15)',
+      shadow: '0 0 40px rgba(223,219,207,0.12)',
+      glow: '0 0 16px rgba(223,219,207,0.35)',
+      spinBorder: true,
     },
     2: {
-      color:       '#B8B4AA',
-      colorRgb:    '184,180,170',
-      border:      'rgba(184,180,170,0.28)',
-      bg:          'linear-gradient(155deg, rgba(184,180,170,0.07) 0%, #0C0C0C 55%, #0E0E0E 100%)',
-      badgeBg:     'rgba(184,180,170,0.1)',
-      shadow:      '0 0 24px rgba(184,180,170,0.07)',
-      glow:        'none',
-      spinBorder:  false,
+      color: '#B8B4AA',
+      colorRgb: '184,180,170',
+      border: 'rgba(184,180,170,0.28)',
+      bg: 'linear-gradient(155deg, rgba(184,180,170,0.07) 0%, #0C0C0C 55%, #0E0E0E 100%)',
+      badgeBg: 'rgba(184,180,170,0.1)',
+      shadow: '0 0 24px rgba(184,180,170,0.07)',
+      glow: 'none',
+      spinBorder: false,
     },
     3: {
-      color:       '#7A7872',
-      colorRgb:    '122,120,114',
-      border:      'rgba(122,120,114,0.22)',
-      bg:          'linear-gradient(155deg, rgba(122,120,114,0.05) 0%, #0C0C0C 55%, #0E0E0E 100%)',
-      badgeBg:     'rgba(122,120,114,0.08)',
-      shadow:      '0 0 16px rgba(122,120,114,0.05)',
-      glow:        'none',
-      spinBorder:  false,
+      color: '#7A7872',
+      colorRgb: '122,120,114',
+      border: 'rgba(122,120,114,0.22)',
+      bg: 'linear-gradient(155deg, rgba(122,120,114,0.05) 0%, #0C0C0C 55%, #0E0E0E 100%)',
+      badgeBg: 'rgba(122,120,114,0.08)',
+      shadow: '0 0 16px rgba(122,120,114,0.05)',
+      glow: 'none',
+      spinBorder: false,
     },
   }
 
   const s = rankStyles[rank]
   const avatarSize = isFirst ? 112 : 80
-  const nameSize   = isFirst ? 22  : 17
-  const pnlSize    = isFirst ? 28  : 20
-  const rankLabel  = rank === 1 ? '✦ Rank 1' : rank === 2 ? '· Rank 2' : '· Rank 3'
+  const nameSize = isFirst ? 22 : 17
+  const pnlSize = isFirst ? 28 : 20
+  const rankLabel = rank === 1 ? '✦ Rank 1' : rank === 2 ? '· Rank 2' : '· Rank 3'
 
   const cardInner = (
     <div
       style={{
-        background:     s.bg,
+        background: s.bg,
         backdropFilter: 'blur(16px)',
-        border:         `1px solid ${s.border}`,
-        borderRadius:   16,
-        padding:        isFirst ? '36px 32px' : '28px 24px',
-        display:        'flex',
-        flexDirection:  'column',
-        alignItems:     'center',
-        textAlign:      'center',
-        position:       'relative',
-        transition:     'transform 0.25s ease',
-        transform:      hovered ? 'translateY(-5px)' : 'translateY(0)',
-        zIndex:         1,
+        border: `1px solid ${s.border}`,
+        borderRadius: 16,
+        padding: isFirst ? '36px 32px' : '28px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        position: 'relative',
+        transition: 'transform 0.25s ease',
+        transform: hovered ? 'translateY(-5px)' : 'translateY(0)',
+        zIndex: 1,
       }}
     >
       {/* Corner radiance for rank 1 */}
@@ -415,20 +428,20 @@ function PodiumCard({ caller, rank, isFirst }) {
 
       {/* Rank badge */}
       <div style={{
-        position:   'absolute',
-        top:        -16,
-        left:       '50%',
-        transform:  'translateX(-50%)',
+        position: 'absolute',
+        top: -16,
+        left: '50%',
+        transform: 'translateX(-50%)',
         background: s.badgeBg,
-        color:      s.color,
+        color: s.color,
         fontFamily: 'var(--font-display)',
-        fontSize:   rank === 1 ? 14 : 12,
+        fontSize: rank === 1 ? 14 : 12,
         fontWeight: 700,
-        padding:    rank === 1 ? '7px 20px' : '5px 16px',
+        padding: rank === 1 ? '7px 20px' : '5px 16px',
         borderRadius: 999,
-        border:     `1px solid ${s.border}`,
+        border: `1px solid ${s.border}`,
         whiteSpace: 'nowrap',
-        boxShadow:  s.glow,
+        boxShadow: s.glow,
         letterSpacing: '0.05em',
       }}>
         {rankLabel}
@@ -436,23 +449,23 @@ function PodiumCard({ caller, rank, isFirst }) {
 
       {/* Avatar */}
       <div style={{
-        width:        avatarSize,
-        height:       avatarSize,
+        width: avatarSize,
+        height: avatarSize,
         borderRadius: '50%',
-        border:       `${rank === 1 ? 2 : 1}px solid ${s.border}`,
-        overflow:     'hidden',
-        background:   'rgba(20,20,20,0.8)',
-        display:      'flex',
-        alignItems:   'center',
+        border: `${rank === 1 ? 2 : 1}px solid ${s.border}`,
+        overflow: 'hidden',
+        background: 'rgba(20,20,20,0.8)',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        fontFamily:   'var(--font-display)',
-        fontWeight:   700,
-        fontSize:     avatarSize * 0.35,
-        color:        s.color,
-        marginTop:    12,
+        fontFamily: 'var(--font-display)',
+        fontWeight: 700,
+        fontSize: avatarSize * 0.35,
+        color: s.color,
+        marginTop: 12,
         marginBottom: 16,
-        flexShrink:   0,
-        boxShadow:    rank === 1 ? `0 0 24px rgba(${s.colorRgb},0.3)` : rank === 2 ? `0 0 10px rgba(${s.colorRgb},0.12)` : 'none',
+        flexShrink: 0,
+        boxShadow: rank === 1 ? `0 0 24px rgba(${s.colorRgb},0.3)` : rank === 2 ? `0 0 10px rgba(${s.colorRgb},0.12)` : 'none',
       }}>
         {caller.pfp_url
           ? <img src={caller.pfp_url} alt={caller.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -463,9 +476,9 @@ function PodiumCard({ caller, rank, isFirst }) {
       {/* Name */}
       <div style={{
         fontFamily: 'var(--font-display)',
-        fontSize:   nameSize,
+        fontSize: nameSize,
         fontWeight: 700,
-        color:      s.color,
+        color: s.color,
         marginBottom: 4,
       }}>
         {caller.name || shortAddress(caller.wallet_address)}{caller.is_agent && ' 🤖'}
@@ -474,8 +487,8 @@ function PodiumCard({ caller, rank, isFirst }) {
       {/* Win rate */}
       <div style={{
         fontFamily: 'var(--font-body)',
-        fontSize:   13,
-        color:      'var(--text-secondary)',
+        fontSize: 13,
+        color: 'var(--text-secondary)',
         marginBottom: 20,
       }}>
         Win Rate: {caller.win_rate?.toFixed(1) ?? 0}%
@@ -490,18 +503,18 @@ function PodiumCard({ caller, rank, isFirst }) {
 
       {/* PNL */}
       <div style={{
-        fontFamily:    'var(--font-body)',
-        fontSize:      11,
-        color:         `rgba(${s.colorRgb},0.6)`,
+        fontFamily: 'var(--font-body)',
+        fontSize: 11,
+        color: `rgba(${s.colorRgb},0.6)`,
         textTransform: 'uppercase',
         letterSpacing: 2,
-        marginBottom:  6,
+        marginBottom: 6,
       }}>TOTAL PNL</div>
       <div style={{
         fontFamily: 'var(--font-mono)',
-        fontSize:   pnlSize,
+        fontSize: pnlSize,
         fontWeight: 700,
-        color:      (caller.total_pnl || 0) >= 0 ? s.color : 'rgba(200,80,80,0.85)',
+        color: (caller.total_pnl || 0) >= 0 ? s.color : 'rgba(200,80,80,0.85)',
         textShadow: rank === 1 ? `0 0 12px rgba(${s.colorRgb},0.4)` : 'none',
       }}>
         {(caller.total_pnl || 0) >= 0 ? '+' : ''}{formatRitualNum(caller.total_pnl)} RLO
@@ -538,8 +551,8 @@ function TableRow({ caller, rank }) {
       alignItems: 'center',
       transition: 'background 0.2s ease',
     }}
-    onMouseEnter={e => e.currentTarget.style.background = 'rgba(223,219,207,0.04)'}
-    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(223,219,207,0.04)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
       {/* Rank */}
       <div style={{

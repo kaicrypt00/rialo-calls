@@ -23,7 +23,7 @@ const RPC_URL        = 'https://ethereum-sepolia-rpc.publicnode.com'
 
 // ─── CONTRACT ADDRESSES (Ethereum Sepolia) ────────────────────────────────────
 const RLO_TOKEN    = '0x277C8aDbD292CB75CC5F0172714CF6842F4F90f1'
-const BETTING_POOL = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
+const BETTING_POOL = '0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F'
 
 // ─── SIDE CONSTANTS — must match contract (1=YES, 2=NO, 0=unset) ─────────────
 const SIDE = { YES: 1, NO: 2 }

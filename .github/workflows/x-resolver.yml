@@ -2,13 +2,13 @@ name: X Resolver
 
 on:
   schedule:
-    - cron: '0 * * * *'   # Every hour on the hour (UTC)
-  workflow_dispatch:        # Manual run button in GitHub Actions UI for testing
+    - cron: '*/30 * * * *'  # Every 30 minutes (UTC) — rialo-calls is a public repo
+  workflow_dispatch:          # Manual run button in GitHub Actions UI for testing
 
 jobs:
   resolve:
     runs-on: ubuntu-latest
-    timeout-minutes: 10     # Kill the job if it hangs longer than 10 minutes
+    timeout-minutes: 15     # 2 attempts × 5min gap + processing headroom
 
     steps:
       - name: Checkout

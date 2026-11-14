@@ -13,19 +13,19 @@ import { supabase } from '../config/supabase'
 
 const DataPrefetchContext = createContext(null)
 
-const CACHE_TTL_MS    = 45_000
-const LS_LB_KEY       = 'rc_cache_leaderboard'
-const LS_POLLS_KEY    = 'rc_cache_polls'
-const LS_PREDS_KEY    = 'rc_cache_predictions'
-const LS_CACHE_TTL    = 5 * 60 * 1000 // 5 min
+const CACHE_TTL_MS = 45_000
+const LS_LB_KEY = 'rc_cache_leaderboard'
+const LS_POLLS_KEY = 'rc_cache_polls'
+const LS_PREDS_KEY = 'rc_cache_predictions'
+const LS_CACHE_TTL = 5 * 60 * 1000 // 5 min
 
 export function DataPrefetchProvider({ children }) {
   // All predictions (open + locked + settled) — pages filter client-side
-  const [allPredictions,  setAllPredictions]  = useState(null)
-  const [leaderboard,     setLeaderboard]     = useState(null)
-  const [polls,           setPolls]           = useState(null)
-  const [globalStats,     setGlobalStats]     = useState(null)
-  const [betsStats,       setBetsStats]       = useState(null)
+  const [allPredictions, setAllPredictions] = useState(null)
+  const [leaderboard, setLeaderboard] = useState(null)
+  const [polls, setPolls] = useState(null)
+  const [globalStats, setGlobalStats] = useState(null)
+  const [betsStats, setBetsStats] = useState(null)
 
   const lastFetch = useRef({ predictions: 0, leaderboard: 0, polls: 0, stats: 0 })
 
@@ -40,7 +40,7 @@ export function DataPrefetchProvider({ children }) {
         const { data: cached, ts } = JSON.parse(raw)
         if (Date.now() - ts < LS_CACHE_TTL) setAllPredictions(cached)
       }
-    } catch {}
+    } catch { }
 
     try {
       const { data } = await supabase
@@ -48,7 +48,7 @@ export function DataPrefetchProvider({ children }) {
         .select('*')
         .order('created_at', { ascending: false })
       setAllPredictions(data || [])
-      try { localStorage.setItem(LS_PREDS_KEY, JSON.stringify({ data: data || [], ts: Date.now() })) } catch {}
+      try { localStorage.setItem(LS_PREDS_KEY, JSON.stringify({ data: data || [], ts: Date.now() })) } catch { }
       lastFetch.current.predictions = Date.now()
     } catch { /* silent — pages fall back to their own fetch */ }
   }, [])
@@ -64,9 +64,15 @@ export function DataPrefetchProvider({ children }) {
         const { data: cached, ts } = JSON.parse(raw)
         if (Date.now() - ts < LS_CACHE_TTL) setLeaderboard(cached)
       }
-    } catch {}
+    } catch { }
 
     try {
+      // Always fetch agent row (is_agent = true) regardless of P&L
+      const { data: agentRows } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .eq('is_agent', true)
+
       const { data: callers } = await supabase
         .from('leaderboard')
         .select('*')
@@ -75,20 +81,27 @@ export function DataPrefetchProvider({ children }) {
         .order('total_pnl', { ascending: false })
         .limit(10)
 
-      if (callers?.length) {
-        const addrs = callers.map(d => d.wallet_address.toLowerCase())
+      // Merge: agent first (deduplicated), then top callers
+      const agentAddrs = new Set((agentRows || []).map(r => r.wallet_address?.toLowerCase()))
+      const merged = [
+        ...(agentRows || []),
+        ...(callers || []).filter(c => !agentAddrs.has(c.wallet_address?.toLowerCase())),
+      ]
+
+      if (merged.length) {
+        const addrs = merged.map(d => d.wallet_address.toLowerCase())
         const { data: profs } = await supabase
           .from('profiles')
           .select('wallet_address, name, pfp_url')
           .in('wallet_address', addrs)
         const map = {}
         profs?.forEach(p => { map[p.wallet_address.toLowerCase()] = p })
-        const merged = callers.map(c => ({ ...c, ...(map[c.wallet_address.toLowerCase()] || {}) }))
-        setLeaderboard(merged)
-        try { localStorage.setItem(LS_LB_KEY, JSON.stringify({ data: merged, ts: Date.now() })) } catch {}
+        const withProfs = merged.map(c => ({ ...c, ...(map[c.wallet_address.toLowerCase()] || {}) }))
+        setLeaderboard(withProfs)
+        try { localStorage.setItem(LS_LB_KEY, JSON.stringify({ data: withProfs, ts: Date.now() })) } catch { }
       } else {
         setLeaderboard([])
-        try { localStorage.setItem(LS_LB_KEY, JSON.stringify({ data: [], ts: Date.now() })) } catch {}
+        try { localStorage.setItem(LS_LB_KEY, JSON.stringify({ data: [], ts: Date.now() })) } catch { }
       }
       lastFetch.current.leaderboard = Date.now()
     } catch { /* silent */ }
@@ -105,7 +118,7 @@ export function DataPrefetchProvider({ children }) {
         const { data: cached, ts } = JSON.parse(raw)
         if (Date.now() - ts < LS_CACHE_TTL) setPolls(cached)
       }
-    } catch {}
+    } catch { }
 
     try {
       const { data } = await supabase
@@ -114,7 +127,7 @@ export function DataPrefetchProvider({ children }) {
         .eq('status', 'active')
         .order('vote_count', { ascending: false })
       setPolls(data || [])
-      try { localStorage.setItem(LS_POLLS_KEY, JSON.stringify({ data: data || [], ts: Date.now() })) } catch {}
+      try { localStorage.setItem(LS_POLLS_KEY, JSON.stringify({ data: data || [], ts: Date.now() })) } catch { }
       lastFetch.current.polls = Date.now()
     } catch { /* silent */ }
   }, [])
@@ -130,8 +143,8 @@ export function DataPrefetchProvider({ children }) {
       ])
       setGlobalStats({ activeCalls: callsRes.count ?? 0, totalCallers: callersRes.count ?? 0 })
 
-      const allBets    = betsRes.data || []
-      const callerSet  = new Set(allBets.map(b => b.wallet_address?.toLowerCase()))
+      const allBets = betsRes.data || []
+      const callerSet = new Set(allBets.map(b => b.wallet_address?.toLowerCase()))
       const biggestCall = allBets.reduce((max, b) => Math.max(max, parseFloat(b.amount || 0)), 0)
       const { count: resolved } = await supabase
         .from('predictions_display')
@@ -139,11 +152,11 @@ export function DataPrefetchProvider({ children }) {
         .in('status', ['yes_wins', 'no_wins'])
 
       setBetsStats({
-        totalVolume:   allBets.reduce((s, b) => s + parseFloat(b.amount || 0), 0).toFixed(2),
-        callsMade:     allBets.length,
-        callers:       callerSet.size,
+        totalVolume: allBets.reduce((s, b) => s + parseFloat(b.amount || 0), 0).toFixed(2),
+        callsMade: allBets.length,
+        callers: callerSet.size,
         callsResolved: resolved ?? 0,
-        biggestCall:   biggestCall.toFixed(2),
+        biggestCall: biggestCall.toFixed(2),
       })
       lastFetch.current.stats = Date.now()
     } catch { /* silent */ }
@@ -173,7 +186,7 @@ export function DataPrefetchProvider({ children }) {
       .channel('global-predictions-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions_display' }, () => {
         // Bust the localStorage cache immediately so stale data is never served
-        try { localStorage.removeItem(LS_PREDS_KEY) } catch {}
+        try { localStorage.removeItem(LS_PREDS_KEY) } catch { }
         lastFetch.current.predictions = 0  // reset in-memory TTL too
         fetchAllPredictions(true)
         fetchStats(true)
@@ -183,7 +196,7 @@ export function DataPrefetchProvider({ children }) {
   }, [fetchAllPredictions, fetchStats])
 
   // warmCache is now a no-op kept for API compat (boot is automatic)
-  const warmCache = useCallback(() => {}, [])
+  const warmCache = useCallback(() => { }, [])
 
   return (
     <DataPrefetchContext.Provider value={{
@@ -195,8 +208,8 @@ export function DataPrefetchProvider({ children }) {
       warmCache,
       refetchPredictions: () => fetchAllPredictions(true),
       refetchLeaderboard: () => fetchLeaderboard(true),
-      refetchPolls:       () => fetchPolls(true),
-      refetchStats:       () => fetchStats(true),
+      refetchPolls: () => fetchPolls(true),
+      refetchStats: () => fetchStats(true),
     }}>
       {children}
     </DataPrefetchContext.Provider>

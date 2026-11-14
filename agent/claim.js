@@ -1,4 +1,4 @@
-﻿// agent/claim.js
+// agent/claim.js
 // RialoBot — Daily Claim Script
 // Triggered by GitHub Actions at 8PM UTC daily.
 // Scans all pending bets. For each settled market:
@@ -17,7 +17,7 @@ const AGENT_PRIVATE_KEY    = process.env.AGENT_PRIVATE_KEY
 const SUPABASE_URL         = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const RPC_URL              = 'https://ethereum-sepolia-rpc.publicnode.com'
-const BETTING_POOL         = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
+const BETTING_POOL         = '0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F'
 
 // Verified against deployed contracts.js
 const BETTING_POOL_ABI = [

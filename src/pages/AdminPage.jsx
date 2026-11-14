@@ -3,7 +3,7 @@ import { useAccount, useWalletClient } from 'wagmi'
 import { usePublicClient }  from 'wagmi'
 import { createPublicClient, http, parseEther } from 'viem'
 import { sepolia } from 'viem/chains'
-import { CONTRACT_ADDRESSES, BETTING_POOL_ABI, POLL_REGISTRY_ADDRESS, POLL_REGISTRY_ABI } from '../config/contracts'
+import { CONTRACT_ADDRESSES, BETTING_POOL_ABI, ACHIEVEMENT_REGISTRY_ABI, POLL_REGISTRY_ADDRESS, POLL_REGISTRY_ABI } from '../config/contracts'
 import { supabase } from '../config/supabase'
 import { useToast } from '../context/ToastContext'
 
@@ -558,6 +558,101 @@ function CreatePredictionSection() {
 }
 
 // ============================================================
+// Contract Migration Card — AchievementRegistry → new BettingPool
+// One-time admin action. Disappears once already pointing to new pool.
+// ============================================================
+const NEW_POOL = '0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F'
+const OLD_POOL = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
+
+function ContractMigrationCard({ walletClient, address, publicClient }) {
+  const { showPending, showConfirmed, showFailed } = useToast()
+  const [currentPool, setCurrentPool] = useState(null)
+  const [migrating, setMigrating]     = useState(false)
+
+  useEffect(() => {
+    readCurrentPool()
+  }, [])
+
+  async function readCurrentPool() {
+    try {
+      const pool = await publicClient.readContract({
+        address: CONTRACT_ADDRESSES.ACHIEVEMENT_REGISTRY,
+        abi: ACHIEVEMENT_REGISTRY_ABI,
+        functionName: 'bettingPool',
+      })
+      setCurrentPool(pool?.toLowerCase())
+    } catch (e) {
+      console.warn('ContractMigrationCard: could not read bettingPool:', e.message)
+    }
+  }
+
+  async function doMigrate() {
+    if (!walletClient) return showFailed('Connect your main wallet first')
+    setMigrating(true)
+    showPending('Updating AchievementRegistry → new BettingPool...')
+    try {
+      const txHash = await walletClient.writeContract({
+        account: address,
+        address: CONTRACT_ADDRESSES.ACHIEVEMENT_REGISTRY,
+        abi: ACHIEVEMENT_REGISTRY_ABI,
+        functionName: 'setBettingPool',
+        args: [NEW_POOL],
+      })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      if (receipt.status === 'reverted') throw new Error('setBettingPool reverted on-chain.')
+      showConfirmed(txHash)
+      await readCurrentPool()
+    } catch (e) {
+      showFailed(e)
+    } finally {
+      setMigrating(false)
+    }
+  }
+
+  // If already pointing to new pool — show success state (compact)
+  if (currentPool === NEW_POOL.toLowerCase()) {
+    return (
+      <div style={{
+        background: 'rgba(45,212,164,0.06)', border: '1px solid rgba(45,212,164,0.2)',
+        borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        fontSize: 13, color: 'var(--accent-primary)',
+      }}>
+        ✅ AchievementRegistry is pointing to the new BettingPool v2.
+      </div>
+    )
+  }
+
+  // If still on old pool — show warning + update button
+  if (currentPool === OLD_POOL.toLowerCase()) {
+    return (
+      <div style={{
+        background: 'rgba(224,85,85,0.06)', border: '1px solid rgba(224,85,85,0.25)',
+        borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>⚙️</span>
+          <span style={{ fontWeight: 700, color: 'var(--gold)', fontSize: 14 }}>Contract Migration Required</span>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          AchievementRegistry still points to the old BettingPool (v1). Click below to update it once — this enables badge minting to work with the new contract.
+        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ alignSelf: 'flex-start' }}
+          onClick={doMigrate}
+          disabled={migrating}
+        >
+          {migrating ? '⏳ Updating...' : '🔄 Update to BettingPool v2'}
+        </button>
+      </div>
+    )
+  }
+
+  // Loading / unknown state — show nothing
+  return null
+}
+
+// ============================================================
 // Section 2 — Manage Predictions
 // ============================================================
 function ManagePredictionsSection() {
@@ -826,37 +921,30 @@ function ManagePredictionsSection() {
     }
   }
 
-  async function doDelete(pred) {
+  async function doRefund(pred) {
     if (!walletClient) return showFailed('Connect your main wallet first')
     setActivePredId(pred.id); setActiveAction('delete'); setDeleteModal(null)
     setIsBusyLocal(true)
-    showPending('Deleting prediction...')
+    showPending('Refunding prediction...')
     try {
       const txHash = await walletClient.writeContract({
           account: address,
         address: CONTRACT_ADDRESSES.BETTING_POOL,
         abi: BETTING_POOL_ABI,
-        functionName: 'deletePrediction',
+        functionName: 'refundPrediction',
         args: [BigInt(pred.id)],
       })
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
-      if (receipt.status === 'reverted') throw new Error('deletePrediction reverted on-chain.')
+      if (receipt.status === 'reverted') throw new Error('refundPrediction reverted on-chain.')
       showConfirmed(txHash)
       await supabase.from('wallet_transactions').insert({
         wallet_address: address,
         type: 'admin_action',
-        label: `Deleted prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
+        label: `Refunded prediction #${pred.id}: ${pred.title.slice(0, 50)}`,
         tx_hash: txHash,
       })
-      // Clean up Supabase
-      const { data: p } = await supabase.from('predictions_display')
-        .select('banner_url').eq('id', pred.id).single()
-      if (p?.banner_url) {
-        const parts = p.banner_url.split('/banners/')
-        if (parts.length > 1) await supabase.storage.from('banners').remove([parts[1]])
-      }
-      await supabase.from('predictions_display').delete().eq('id', pred.id)
-      await supabase.from('bets').delete().eq('prediction_id', pred.id)
+      // Update Supabase status to refunded (prediction stays in DB for transparency)
+      await supabase.from('predictions_display').update({ status: 'refunded' }).eq('id', pred.id)
       fetchPredictions()
     } catch (e) {
       showFailed(e)
@@ -869,6 +957,11 @@ function ManagePredictionsSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Contract Migration Card (one-time action) ── */}
+      {activeTab === 'active' && (
+        <ContractMigrationCard walletClient={walletClient} address={address} publicClient={publicClient} />
+      )}
+
       {/* Header & Tab Switcher */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div className="admin-section-title" style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--gold)', margin: 0 }}>
@@ -1108,14 +1201,16 @@ function ManagePredictionsSection() {
         </AdminModal>
       )}
 
-      {/* Delete Modal */}
+      {/* Refund / Remove Modal */}
       {deleteModal && (
-        <AdminModal title="Delete Prediction" onClose={() => setDeleteModal(null)}>
+        <AdminModal title={deleteModal.status === 'yes_wins' || deleteModal.status === 'no_wins' ? 'Remove from History' : 'Refund Prediction'} onClose={() => setDeleteModal(null)}>
           <div style={{
             background: 'rgba(224,85,85,0.08)', border: '1px solid rgba(224,85,85,0.2)',
             borderRadius: 8, padding: 14, fontSize: 14, color: 'var(--danger)', marginBottom: 16,
           }}>
-            ⚠ Are you sure? Removing this prediction will completely delete it, its bets, and its banner image from the database.
+            {deleteModal.status === 'yes_wins' || deleteModal.status === 'no_wins'
+              ? '⚠ Are you sure? This will permanently remove this settled prediction and its bets from the database.'
+              : '⚠ Are you sure? This will call refundPrediction on-chain so all bettors can reclaim their RLO. The prediction will be marked as refunded.'}
           </div>
           <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -1123,7 +1218,7 @@ function ManagePredictionsSection() {
                 className="btn btn-danger" style={{ flex: 1 }}
                 onClick={() => {
                   if (deleteModal.status === 'yes_wins' || deleteModal.status === 'no_wins') {
-                    // Settled predictions can't be deleted on-chain — DB-only removal
+                    // Settled predictions — DB-only removal
                     ;(async () => {
                       const targetId = deleteModal.id
                       const bannerUrl = deleteModal.banner_url
@@ -1137,13 +1232,13 @@ function ManagePredictionsSection() {
                       fetchPredictions()
                     })()
                   } else {
-                    // Active prediction: fire on-chain tx via session wallet
-                    doDelete(deleteModal)
+                    // Active prediction: on-chain refundPrediction
+                    doRefund(deleteModal)
                   }
                 }}
                 disabled={isBusy}
               >
-                Yes, Permanently Delete
+                {deleteModal.status === 'yes_wins' || deleteModal.status === 'no_wins' ? 'Yes, Remove' : 'Yes, Refund Prediction'}
               </button>
               <button className="btn btn-ghost" onClick={() => setDeleteModal(null)}>Cancel</button>
             </div>

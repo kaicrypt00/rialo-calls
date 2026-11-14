@@ -1,5 +1,5 @@
 // agents/x-resolver.js
-// X Resolver — monitors X accounts every hour and locks predictions when conditions are met
+// X Resolver — monitors X accounts every 30 min and locks predictions when conditions are met
 // Runs on GitHub Actions. Never runs on localhost.
 // DO NOT log the admin private key.
 
@@ -30,7 +30,7 @@ if (missing.length > 0) {
 }
 
 // BettingPool contract address on Sepolia
-const BETTING_POOL = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
+const BETTING_POOL = '0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F'
 
 // Public Sepolia RPC — no API key needed
 const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
@@ -72,6 +72,27 @@ const publicClient = createPublicClient({
   transport: http(RPC_URL),
 })
 
+// ─── RETRY HELPER ─────────────────────────────────────────────────────────────
+// On fxtwitter blip: wait 5 min, retry once (2 attempts total).
+// fxtwitter has no meaningful rate limit for our usage.
+// Failures are upstream X/Twitter connection blips — short, not prolonged.
+async function withRetry(fn, maxAttempts = 2, delayMs = 300_000, label = '') {
+  let lastErr
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      if (attempt < maxAttempts) {
+        console.warn(`  ♻️  ${label} attempt ${attempt}/${maxAttempts} failed: ${err.message} — retrying in ${delayMs / 1000}s`)
+        await new Promise(r => setTimeout(r, delayMs))
+      }
+    }
+  }
+  console.error(`  ❌ ${label} failed after ${maxAttempts} attempts: ${lastErr.message}`)
+  throw lastErr
+}
+
 // ─── FXTWITTER HELPERS ────────────────────────────────────────────────────────
 
 const FX_HEADERS = {
@@ -112,8 +133,8 @@ async function fetchTweet(handle, tweetId) {
 
 /**
  * Parse RSS XML and return an array of tweet objects:
- * { id, url, title, pubDate, timestamp (unix seconds) }
- * Only includes tweets by the target handle (not retweets from others).
+ * { id, url, title, fullText, pubDate, timestamp (unix seconds), tweetAuthor }
+ * Includes ALL posts in the feed (original tweets AND reposts).
  */
 function parseRssTweets(xml, handle) {
   const items = []
@@ -126,24 +147,35 @@ function parseRssTweets(xml, handle) {
     const pubMatch    = itemXml.match(/<pubDate>([^<]+)<\/pubDate>/)
     const titleMatch  = itemXml.match(/<title><!\[CDATA\[([^\]]*)\]\]><\/title>/) ||
                         itemXml.match(/<title>([^<]*)<\/title>/)
+    // Also grab description — fxtwitter puts the FULL tweet text here (title may be truncated)
+    const descMatch   = itemXml.match(/<description><!\[CDATA\[([^\]]*)\]\]><\/description>/) ||
+                        itemXml.match(/<description>([^<]*)<\/description>/)
 
     if (!linkMatch) continue
 
     const url = linkMatch[1].trim()
-
-    // Only count tweets from the target handle (skip retweets by others)
     const urlLower = url.toLowerCase()
-    if (!urlLower.includes(`x.com/${handle.toLowerCase()}/status/`)) continue
+    // Keep ALL posts — including reposts from other accounts (reposts show original author's URL)
+    if (!urlLower.includes('x.com/') || !urlLower.includes('/status/')) continue
 
     const statusMatch = url.match(/\/status\/(\d+)/)
     if (!statusMatch) continue
 
-    const id        = statusMatch[1]
-    const pubDate   = pubMatch ? pubMatch[1].trim() : null
-    const timestamp = pubDate ? Math.floor(new Date(pubDate).getTime() / 1000) : 0
-    const title     = titleMatch ? titleMatch[1].trim() : ''
+    // Extract the original author handle from the URL (needed for fxtwitter API fetch)
+    const authorMatch = url.match(/x\.com\/([^/]+)\/status\//)
+    const tweetAuthor = authorMatch ? authorMatch[1] : handle
 
-    items.push({ id, url, title, pubDate, timestamp })
+    const id          = statusMatch[1]
+    const pubDate     = pubMatch ? pubMatch[1].trim() : null
+    const timestamp   = pubDate ? Math.floor(new Date(pubDate).getTime() / 1000) : 0
+    const title       = titleMatch ? titleMatch[1].trim() : ''
+    // Strip HTML tags from description (fxtwitter wraps text in <p>, <br>, etc.)
+    const rawDesc     = descMatch ? descMatch[1].trim() : ''
+    const description = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    // Combined full text — description tends to have more content on reposts
+    const fullText    = description.length > title.length ? description : title
+
+    items.push({ id, url, title, fullText, pubDate, timestamp, tweetAuthor })
   }
   return items
 }
@@ -154,12 +186,12 @@ function parseRssTweets(xml, handle) {
  */
 async function fetchTweetsViaRss(handle) {
   try {
-    const res = await fetch(`${FXTWITTER_RSS}/${handle}/feed.xml`, {
+    const res = await fetch(`${FXTWITTER_RSS}/${handle.replace('@', '')}/feed.xml`, {
       headers: { 'User-Agent': 'RialoCallsResolver/1.0', 'Accept': 'application/rss+xml, application/xml, text/xml' },
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const xml = await res.text()
-    const tweets = parseRssTweets(xml, handle)
+    const tweets = parseRssTweets(xml, handle.replace('@', ''))
     // Sort newest first
     tweets.sort((a, b) => b.timestamp - a.timestamp)
     return tweets
@@ -375,7 +407,196 @@ async function checkCondition(prediction, monitor) {
     }
   }
 
+  // ── new_integration: counts posts announcing new live integrations ───────────
+  if (condition_type === 'new_integration') {
+    const target     = parseInt(threshold ?? '1', 10)
+    const foundIds   = Array.isArray(monitor.found_integration_tweet_ids) ? monitor.found_integration_tweet_ids : []
+    const foundNames = new Set(Array.isArray(monitor.found_integration_names) ? monitor.found_integration_names : [])
+    let   foundCount = typeof monitor.found_integration_count === 'number' ? monitor.found_integration_count : 0
+    let   lastMatch  = monitor.last_integration_tweet ?? null
+    const foundPosts = Array.isArray(monitor.found_integration_posts) ? [...monitor.found_integration_posts] : []
+
+    const tweets = await withRetry(
+      () => fetchTweetsViaRss(handle),
+      undefined, undefined, `fetchTweetsViaRss(@${handle})`
+    )
+    const activationTs    = activation_timestamp ?? 0
+    const candidateTweets = tweets.filter(t => t.timestamp >= activationTs && !foundIds.includes(t.id))
+    const lastScanned     = tweets[0] ? { id: tweets[0].id, text: (tweets[0].fullText ?? tweets[0].title ?? '').slice(0, 100), date: tweets[0].pubDate } : null
+
+    const newlyFoundIds = []
+    for (const tweet of candidateTweets) {
+      const postText = tweet.fullText ?? tweet.title ?? ''
+      const isRepost = tweet.tweetAuthor && tweet.tweetAuthor.toLowerCase() !== handle.replace('@', '').toLowerCase()
+      console.log(`    📄 Checking ${isRepost ? `repost from @${tweet.tweetAuthor}` : 'own tweet'} [${tweet.id}]: "${postText.slice(0, 60)}"`)
+
+      if (!isLiveIntegration(postText)) { newlyFoundIds.push(tweet.id); continue }
+
+      // Fetch full tweet body for deeper verification
+      let verifiedText = postText
+      try {
+        await new Promise(r => setTimeout(r, 1500))
+        const tweetHandle = tweet.tweetAuthor ?? handle.replace('@', '')
+        const fullTweet = await fetchTweet(tweetHandle, tweet.id)
+        if (fullTweet?.text) verifiedText = fullTweet.text
+      } catch (_) { /* fall back to RSS text */ }
+
+      if (!isLiveIntegration(verifiedText) || hasContradiction(verifiedText)) {
+        console.log(`    ⚠️  Skipping — full post does not confirm live integration: "${verifiedText.slice(0, 80)}"`)
+        newlyFoundIds.push(tweet.id); continue
+      }
+
+      // Check entities field from monitor (optional) or use generic marker
+      const entities = Array.isArray(monitor.entities) && monitor.entities.length > 0
+        ? monitor.entities.filter(e => verifiedText.toLowerCase().includes(e.toLowerCase()))
+        : ['_integration_']
+
+      for (const entity of entities) {
+        if (foundNames.has(entity)) { console.log(`    ⏭️  Already counted "${entity}"`); continue }
+        foundNames.add(entity)
+        foundCount++
+        if (!lastMatch) lastMatch = { id: tweet.id, text: verifiedText.slice(0, 100), date: tweet.pubDate, entity }
+        foundPosts.push({ url: tweet.url, entity, text: verifiedText.slice(0, 120), date: tweet.pubDate })
+        console.log(`    🤝 Integration confirmed: "${entity}" · ${verifiedText.slice(0, 60)}`)
+        if (foundCount >= target) break
+      }
+
+      newlyFoundIds.push(tweet.id)
+      if (foundCount >= target) break
+      if (candidateTweets.indexOf(tweet) < candidateTweets.length - 1) await new Promise(r => setTimeout(r, 1000))
+    }
+
+    const allFoundIds = [...foundIds, ...newlyFoundIds]
+    const triggered   = foundCount >= target
+    const statusLine  = lastMatch
+      ? `Found ${foundCount} of ${target} · Last: ${(lastMatch.text ?? '').slice(0, 60)}`
+      : `Found ${foundCount} of ${target} · No integrations yet`
+
+    return {
+      triggered,
+      currentValue: statusLine,
+      rawData: { found_count: foundCount, target, last_match: lastMatch, last_scanned: lastScanned, found_names: [...foundNames], found_posts: foundPosts },
+      updatedMonitor: {
+        ...monitor,
+        found_integration_count:     foundCount,
+        found_integration_tweet_ids: allFoundIds,
+        found_integration_names:     [...foundNames],
+        found_integration_posts:     foundPosts,
+        last_integration_tweet:      lastMatch,
+      },
+    }
+  }
+
+  // ── new_topic: counts posts announcing new community topics/groups live ────────
+  if (condition_type === 'new_topic') {
+    const target     = parseInt(threshold ?? '1', 10)
+    const foundIds   = Array.isArray(monitor.found_topic_tweet_ids) ? monitor.found_topic_tweet_ids : []
+    const foundNames = new Set(Array.isArray(monitor.found_topic_names) ? monitor.found_topic_names : [])
+    let   foundCount = typeof monitor.found_topic_count === 'number' ? monitor.found_topic_count : 0
+    let   lastMatch  = monitor.last_topic_tweet ?? null
+    const foundPosts = Array.isArray(monitor.found_topic_posts) ? [...monitor.found_topic_posts] : []
+
+    const tweets = await withRetry(
+      () => fetchTweetsViaRss(handle),
+      undefined, undefined, `fetchTweetsViaRss(@${handle})`
+    )
+    const activationTs    = activation_timestamp ?? 0
+    const candidateTweets = tweets.filter(t => t.timestamp >= activationTs && !foundIds.includes(t.id))
+    const lastScanned     = tweets[0] ? { id: tweets[0].id, text: (tweets[0].fullText ?? tweets[0].title ?? '').slice(0, 100), date: tweets[0].pubDate } : null
+
+    const newlyFoundIds = []
+    for (const tweet of candidateTweets) {
+      const postText = tweet.fullText ?? tweet.title ?? ''
+      const isRepost = tweet.tweetAuthor && tweet.tweetAuthor.toLowerCase() !== handle.replace('@', '').toLowerCase()
+      console.log(`    📄 Checking ${isRepost ? `repost from @${tweet.tweetAuthor}` : 'own tweet'} [${tweet.id}]: "${postText.slice(0, 60)}"`)
+
+      if (!isNewTopic(postText)) { newlyFoundIds.push(tweet.id); continue }
+
+      let verifiedText = postText
+      try {
+        await new Promise(r => setTimeout(r, 1500))
+        const tweetHandle = tweet.tweetAuthor ?? handle.replace('@', '')
+        const fullTweet = await fetchTweet(tweetHandle, tweet.id)
+        if (fullTweet?.text) verifiedText = fullTweet.text
+      } catch (_) { /* fall back to RSS text */ }
+
+      if (!isNewTopic(verifiedText) || hasContradiction(verifiedText)) {
+        console.log(`    ⚠️  Skipping — full post does not confirm live topic: "${verifiedText.slice(0, 80)}"`)
+        newlyFoundIds.push(tweet.id); continue
+      }
+
+      const entities = Array.isArray(monitor.entities) && monitor.entities.length > 0
+        ? monitor.entities.filter(e => verifiedText.toLowerCase().includes(e.toLowerCase()))
+        : ['_topic_']
+
+      for (const entity of entities) {
+        if (foundNames.has(entity)) { console.log(`    ⏭️  Already counted topic "${entity}"`); continue }
+        foundNames.add(entity)
+        foundCount++
+        if (!lastMatch) lastMatch = { id: tweet.id, text: verifiedText.slice(0, 100), date: tweet.pubDate, entity }
+        foundPosts.push({ url: tweet.url, entity, text: verifiedText.slice(0, 120), date: tweet.pubDate })
+        console.log(`    🏠 Topic confirmed: "${entity}" · ${verifiedText.slice(0, 60)}`)
+        if (foundCount >= target) break
+      }
+
+      newlyFoundIds.push(tweet.id)
+      if (foundCount >= target) break
+      if (candidateTweets.indexOf(tweet) < candidateTweets.length - 1) await new Promise(r => setTimeout(r, 1000))
+    }
+
+    const allFoundIds = [...foundIds, ...newlyFoundIds]
+    const triggered   = foundCount >= target
+    const statusLine  = lastMatch
+      ? `Found ${foundCount} of ${target} · Last: ${(lastMatch.text ?? '').slice(0, 60)}`
+      : `Found ${foundCount} of ${target} · No topics yet`
+
+    return {
+      triggered,
+      currentValue: statusLine,
+      rawData: { found_count: foundCount, target, last_match: lastMatch, last_scanned: lastScanned, found_names: [...foundNames], found_posts: foundPosts },
+      updatedMonitor: {
+        ...monitor,
+        found_topic_count:     foundCount,
+        found_topic_tweet_ids: allFoundIds,
+        found_topic_names:     [...foundNames],
+        found_topic_posts:     foundPosts,
+        last_topic_tweet:      lastMatch,
+      },
+    }
+  }
+
   return { error: `Unknown condition_type: ${condition_type}` }
+}
+
+// ─── NEW_INTEGRATION helper pre-filters ───────────────────────────────────────
+// Checks if a post text suggests a live integration announcement (generic signals)
+function isLiveIntegration(text) {
+  if (!text) return false
+  const t = text.toLowerCase()
+  return (
+    /(?:is|are)\s+(?:now\s+)?live/.test(t) ||
+    /now\s+live/.test(t)                   ||
+    /fully\s+migrated/.test(t)             ||
+    /now\s+supports/.test(t)               ||
+    /officially\s+live/.test(t)            ||
+    /launched.*on|live.*integration/i.test(t)
+  )
+}
+
+// Checks if a post text suggests a new community/topic going live
+function isNewTopic(text) {
+  if (!text) return false
+  const t = text.toLowerCase()
+  return (
+    /new.*(?:group|community|club|topic)/i.test(t) ||
+    /(?:is|are)\s+(?:now\s+)?live/i.test(t)        ||
+    /launched|announcing/i.test(t)
+  )
+}
+
+function hasContradiction(text) {
+  const t = text.toLowerCase()
+  return /coming soon|will be live|launching soon|planned for|will launch|not yet live|expected to|upcoming|in the future|next week|next month/.test(t)
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────

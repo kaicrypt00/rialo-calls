@@ -3,9 +3,12 @@
 export const CONTRACT_ADDRESSES = {
   RLO_TOKEN:            '0x277C8aDbD292CB75CC5F0172714CF6842F4F90f1',
   PROFILE_REGISTRY:     '0x2DE1Ed07C104E775aE7368b1B8e2AA669b5CE5C8',
-  BETTING_POOL:         '0x16150779747feF42333a8FDD98E58BfE3CFe7cce',
+  BETTING_POOL:         '0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F',  // v2 — transparent, no deletePrediction
   ACHIEVEMENT_REGISTRY: '0xE33651061F0Cb054A083E6E2C758ac1b81413832',
 }
+
+// Previous BettingPool (v1) — kept for reference only, do NOT use for any writes
+export const OLD_BETTING_POOL = '0x16150779747feF42333a8FDD98E58BfE3CFe7cce'
 
 export const ADMIN_WALLETS = [
   '0x2601Ab18C41Eb4cCbb31A6961Dc0BBb8a946E195',
@@ -21,8 +24,8 @@ export function isAdmin(address) {
 // BettingPool: side — 1 = YES, 2 = NO (0 = unset)
 export const SIDE = { YES: 1, NO: 2 }
 
-// BettingPool: status — 0=open, 1=locked, 2=yes_wins, 3=no_wins, 4=refunded, 5=deleted
-export const STATUS = { OPEN: 0, LOCKED: 1, YES_WINS: 2, NO_WINS: 3, REFUNDED: 4, DELETED: 5 }
+// BettingPool: status — 0=open, 1=locked, 2=yes_wins, 3=no_wins, 4=refunded
+export const STATUS = { OPEN: 0, LOCKED: 1, YES_WINS: 2, NO_WINS: 3, REFUNDED: 4 }
 
 // Minimum bet in RLO (10 RLO = 10 * 1e18)
 export const MIN_BET_RLO = 10
@@ -73,7 +76,6 @@ export const PROFILE_REGISTRY_ABI = [
 export const BETTING_POOL_ABI = [
   { inputs: [{ name: '_rloToken', type: 'address' }], stateMutability: 'nonpayable', type: 'constructor' },
   { inputs: [{ name: '_title', type: 'string' }, { name: '_description', type: 'string' }, { name: '_bannerUrl', type: 'string' }, { name: '_deadline', type: 'uint256' }], name: 'createPrediction', outputs: [], stateMutability: 'nonpayable', type: 'function' },
-  { inputs: [{ name: 'id', type: 'uint256' }], name: 'deletePrediction', outputs: [], stateMutability: 'nonpayable', type: 'function' },
   { inputs: [{ name: 'id', type: 'uint256' }], name: 'refundPrediction', outputs: [], stateMutability: 'nonpayable', type: 'function' },
   { inputs: [{ name: 'id', type: 'uint256' }, { name: 'newDeadline', type: 'uint256' }], name: 'extendDeadline', outputs: [], stateMutability: 'nonpayable', type: 'function' },
   { inputs: [{ name: 'id', type: 'uint256' }], name: 'lockBetting', outputs: [], stateMutability: 'nonpayable', type: 'function' },
@@ -100,7 +102,6 @@ export const BETTING_POOL_ABI = [
   { inputs: [{ name: '', type: 'uint256' }], name: 'predictions', outputs: [{ name: 'id', type: 'uint256' }, { name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'bannerUrl', type: 'string' }, { name: 'deadline', type: 'uint256' }, { name: 'status', type: 'uint8' }, { name: 'yesPool', type: 'uint256' }, { name: 'noPool', type: 'uint256' }, { name: 'totalBettors', type: 'uint256' }, { name: 'createdAt', type: 'uint256' }], stateMutability: 'view', type: 'function' },
   { inputs: [{ name: '', type: 'address' }], name: 'betCount', outputs: [{ type: 'uint256' }], stateMutability: 'view', type: 'function' },
   { anonymous: false, inputs: [{ indexed: true, name: 'id', type: 'uint256' }, { indexed: false, name: 'title', type: 'string' }, { indexed: false, name: 'deadline', type: 'uint256' }, { indexed: false, name: 'createdAt', type: 'uint256' }], name: 'PredictionCreated', type: 'event' },
-  { anonymous: false, inputs: [{ indexed: true, name: 'id', type: 'uint256' }], name: 'PredictionDeleted', type: 'event' },
   { anonymous: false, inputs: [{ indexed: true, name: 'id', type: 'uint256' }], name: 'PredictionRefunded', type: 'event' },
   { anonymous: false, inputs: [{ indexed: true, name: 'id', type: 'uint256' }, { indexed: false, name: 'lockedAt', type: 'uint256' }], name: 'BettingLocked', type: 'event' },
   { anonymous: false, inputs: [{ indexed: true, name: 'id', type: 'uint256' }, { indexed: false, name: 'unlockedAt', type: 'uint256' }], name: 'BettingUnlocked', type: 'event' },

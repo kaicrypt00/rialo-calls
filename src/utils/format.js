@@ -67,6 +67,16 @@ export function timeAgo(dateStr) {
   return `${diffDays}d ago`
 }
 
+// Format date as DD/MM/YY (for prediction publish date)
+export function formatPublishDate(ts) {
+  if (!ts) return ''
+  const d = new Date(typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts)
+  const day   = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year  = String(d.getFullYear()).slice(-2)
+  return `${day}/${month}/${year}`
+}
+
 // Format date as Month Year
 export function formatMonthYear(ts) {
   if (!ts) return ''

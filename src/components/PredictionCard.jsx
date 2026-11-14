@@ -8,7 +8,7 @@ import { supabase } from '../config/supabase'
 import { useToast } from '../context/ToastContext'
 import { useProfile } from '../context/ProfileContext'
 import { useSessionWallet } from '../context/SessionWalletContext'
-import { formatRitual, formatCountdown, calcOdds, validateBetAmount } from '../utils/format'
+import { formatRitual, formatCountdown, calcOdds, validateBetAmount, formatPublishDate } from '../utils/format'
 import { EXPLORER_URL } from '../config/wagmi'
 import { Link } from 'react-router-dom'
 import { useSound } from '../context/SoundContext'
@@ -426,7 +426,12 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
 
         {/* Title */}
         <div>
-          <div className="prediction-card-title" style={{ marginBottom: 6 }}>{prediction.title}</div>
+          <div className="prediction-card-title" style={{ marginBottom: 4 }}>{prediction.title}</div>
+          {prediction.created_at && (
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+              Published {formatPublishDate(prediction.created_at)}
+            </div>
+          )}
           {prediction.description && (
             <div className="prediction-card-desc" style={{ whiteSpace: 'pre-wrap' }}>
               <DescriptionText text={prediction.description} />
@@ -452,6 +457,9 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
             {prediction.no_deadline ? (
               <>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Deadline</span>
+                {prediction.x_monitor?.condition_type && !isSettled && !isRefunded && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>🤖 BOT ACTIVE</span>
+                )}
                 <span className="font-mono" style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 600 }}>Open ∞</span>
               </>
             ) : isSettled || isRefunded ? (
@@ -464,11 +472,17 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
             ) : isLocked ? (
               <>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ends In</span>
+                {prediction.x_monitor?.condition_type && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>🤖 BOT ACTIVE</span>
+                )}
                 <span className="font-mono" style={{ fontSize: 15, color: 'var(--danger)', fontWeight: 700 }}>⏱ BETS CLOSED</span>
               </>
             ) : (
               <>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ends In</span>
+                {prediction.x_monitor?.condition_type && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>🤖 BOT ACTIVE</span>
+                )}
                 <span className="font-mono" style={{
                   fontSize: 16, fontWeight: 700,
                   color: countdownLevel === 'danger' ? 'var(--danger)' : countdownLevel === 'warning' ? 'var(--amber)' : 'var(--text-primary)',
