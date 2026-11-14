@@ -13,6 +13,7 @@ import {
   POLL_REGISTRY_ABI,
 } from '../config/contracts'
 import { useLocation } from 'react-router-dom'
+import { useToast } from '../context/ToastContext'
 
 const publicClient = createPublicClient({
   chain: sepolia,
@@ -99,6 +100,7 @@ const MENU_CHIPS = [
 function CallsGuideCore() {
   const { sessionWallet, ethBalance, rloBalance, loadBalances } = useSessionWallet()
   const { profile, navState } = useProfile()
+  const { showPending, showConfirmed, showFailed } = useToast()
 
   const [open, setOpen]             = useState(false)
   const [messages, setMessages]     = useState([])
@@ -505,7 +507,7 @@ function CallsGuideCore() {
       "🚀 What makes Rialo Calls genuinely different:\n\n" +
       "⚡ Session Wallet — Sign ONCE with MetaMask. That creates a personal in-browser wallet that handles every bet, claim, badge, and vote silently. No popups, no friction. Every transaction is still fully on-chain.\n\n" +
       "🤖 AI Participant (Rialo Agent 001) — A fully autonomous AI that wakes up daily, analyzes open markets, and places real on-chain bets. The platform stays active and engaging around the clock.\n\n" +
-      "🔭 X Resolver — Predictions tied to Twitter/X events resolve automatically. The platform monitors the condition and closes betting the moment it's met — no manual step, no delay.\n\n" +
+      "🔭 X Resolver — Predictions tied to Twitter/X events resolve automatically. GitHub Actions checks the condition every 30 minutes and closes betting the moment it's met — no manual step, no delay. Cards with active resolvers show a 🤖 BOT ACTIVE badge so you always know what's being watched.\n\n" +
       "🔒 Latch Security — The AI agent's access is protected by Latch (OnLatch), Rialo's own infrastructure product. We don't just build on Rialo — we use their tools too.\n\n" +
       "🗳️ Community Polls — The community votes on what gets bet on. Top ideas each round become real markets. You shape what happens on the platform.\n\n" +
       "💬 Calls Guide — That's me. Just type what you need. No menus to dig through.\n\n" +
@@ -523,8 +525,6 @@ function CallsGuideCore() {
     addBot(
       "🔮 What's next for Rialo Calls:\n\n" +
       "🏗️ Rialo Mainnet — The biggest step. Once Rialo mainnet launches, Rialo Calls ships there. Real value, real stakes, real community.\n\n" +
-      "🔭 X Resolver Expansion — More condition types, multiple handles per prediction, webhook notifications when conditions trigger.\n\n" +
-      "🧠 Community Roadmap — The poll system is how the community votes on what gets built and what categories expand. The community literally decides.\n\n" +
       "📱 More Market Categories — Crypto, tech, sports, real-world events. Community-voted categories grow over time.\n\n" +
       "👥 Social Layer — Following top callers, sharing predictions, public reputation scores. The place where the sharpest minds compete.\n\n" +
       "🤖 More AI Agents — Rialo Agent 001 is first. More agents with different strategies join the market.\n\n" +
@@ -565,10 +565,18 @@ function CallsGuideCore() {
       "When a prediction is connected to a real-world Twitter/X event, the platform monitors it automatically. For example: \"Will @elonmusk reach 200M followers?\"\n\n" +
       "How it works from your side:\n" +
       "• The prediction runs as normal — you bet YES or NO\n" +
-      "• The platform checks the X condition automatically, around the clock\n" +
+      "• GitHub Actions checks the X condition every 30 minutes automatically\n" +
+      "• Cards with an active resolver show a 🤖 BOT ACTIVE badge in real time — full transparency\n" +
       "• The moment the condition is met, betting closes on-chain instantly\n" +
       "• No manual step needed — the market reacts to reality in real time\n\n" +
-      "Supported conditions include: follower counts, tweet milestones, new posts, profile changes, post engagement, and more.\n\n" +
+      "Supported conditions:\n" +
+      "• Follower count (threshold gte/lte)\n" +
+      "• Tweet count milestones\n" +
+      "• New posts / engagement (views, likes, reposts, replies)\n" +
+      "• Profile picture changes\n" +
+      "• Verification status changes\n" +
+      "• New integration posts (auto-detects partnership announcements)\n" +
+      "• New topic posts (matches a keyword in recent tweets)\n\n" +
       "The whole process is automated and on-chain — fair, transparent, and tamper-proof. ⚡",
       [
         { label: '🚀 What makes it unique', intent: 'INFO_NOVEL' },
@@ -581,10 +589,11 @@ function CallsGuideCore() {
     addBot(
       "🏗️ How Rialo Calls is built:\n\n" +
       "The frontend is a React app deployed on Vercel. It connects to Ethereum Sepolia via your MetaMask wallet.\n\n" +
-      "📜 Smart Contracts (on-chain, public) — All the real logic lives here. Bets, payouts, profiles, badges, and polls are all enforced on-chain. The blockchain is the single source of truth for your funds.\n\n" +
+      "📜 Smart Contracts (on-chain, public) — All the real logic lives here. BettingPool v2 handles bets, payouts, and refunds fully on-chain. No prediction deletion — if a market is cancelled, bets are refunded directly. Profiles, badges, and polls each have their own contracts.\n\n" +
       "⚡ Session Wallet — When you activate your Rialo Calls Wallet, a secure in-browser wallet is created from your MetaMask signature. It handles all transactions silently after that one sign. Nothing is sent to any server.\n\n" +
       "📊 Supabase — Used as a fast, real-time display layer. Prediction pools, leaderboards, and history load instantly. The blockchain remains the authority for all funds.\n\n" +
-      "🤖 Automation — Background agents handle the AI daily bet and the X Resolver checks. Both act entirely on-chain.",
+      "🤖 Automation — GitHub Actions runs two background agents: RialoBot (daily AI betting at 8AM UTC) and the X Resolver (checks X conditions every 30 minutes, auto-locks markets on-chain when triggered).\n\n" +
+      "🎴 Prediction Cards — Each card shows the publish date and a 🤖 BOT ACTIVE badge when the X Resolver is actively watching it — full transparency on which markets are automated.",
       [
         { label: '🔭 X Resolver',   intent: 'INFO_RESOLVER' },
         { label: '🔐 Is it safe?',   intent: 'INFO_SECURITY'  },
@@ -744,11 +753,14 @@ function CallsGuideCore() {
 
       if (action === 'FAUCET') {
         addBot('⏳ Claiming your 1,000 RLO...')
+        showPending('Claiming 1,000 RLO from faucet...')
         const txHash = await sessionWallet.client.writeContract({
           address: CONTRACT_ADDRESSES.RLO_TOKEN,
           abi: RLO_ABI,
           functionName: 'claim',
         })
+        await publicClient.waitForTransactionReceipt({ hash: txHash })
+        showConfirmed(txHash)
         await logToWallet('faucet', 'Claimed 1,000 RLO from Faucet', 1000, txHash)
         await loadBalances()
         addBot(`✅ 1,000 RLO claimed!\nTx: ${txHash.slice(0, 10)}...`, [{ label: '💰 My balance', intent: 'BALANCE' }, { label: '↩ Menu', intent: 'MENU' }])
