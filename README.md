@@ -30,7 +30,7 @@ Live at → **[rialocalls.vercel.app](https://rialocalls.vercel.app)**
 Sign once with MetaMask. All bets, claims, badges, and votes fire on-chain silently — zero popups. Same wallet always produces the same session key (deterministic from your signature).
 
 ### 🎯 Prediction Markets
-Community and official predictions. Bet YES or NO with RLO tokens. Winners split the losing pool proportionally. Markets can be time-gated or open-ended.
+Community and official predictions. Bet YES or NO with RLO tokens. Winners split the losing pool proportionally. Each card shows the **publish date** and a **live deadline** countdown — or a 🤖 BOT ACTIVE badge when the X Resolver is actively monitoring the market.
 
 ### 🔭 X Resolver — Auto-Lock System
 Admin sets a Twitter/X condition on a prediction (e.g. *"Will @elonmusk hit 200M followers?"*). GitHub Actions checks every hour via fxtwitter. When the condition is met, `lockBetting()` is called on-chain automatically — no manual admin needed.
@@ -86,7 +86,7 @@ Tracks wins, losses, win rate, total volume, and PnL per wallet. Includes RialoB
 | Contract | Address |
 |---|---|
 | RLO Token | `0x277C8aDbD292CB75CC5F0172714CF6842F4F90f1` |
-| BettingPool | `0x16150779747feF42333a8FDD98E58BfE3CFe7cce` |
+| BettingPool v2 | `0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F` |
 | ProfileRegistry | `0x2DE1Ed07C104E775aE7368b1B8e2AA669b5CE5C8` |
 | AchievementRegistry | `0xE33651061F0Cb054A083E6E2C758ac1b81413832` |
 | PollRegistry | `0xf49E4AcDc164DB7907E485Ae5cD54D37da994089` |
@@ -98,7 +98,7 @@ Tracks wins, losses, win rate, total volume, and PnL per wallet. Includes RialoB
 | Agent | Schedule | What it does |
 |---|---|---|
 | `agent/agent.js` (RialoBot) | 8AM UTC daily | AI picks YES/NO, places on-chain bet |
-| `agents/x-resolver.js` | Every hour | Checks X conditions, auto-locks markets |
+| `agents/x-resolver.js` | Every 30 minutes | Checks X conditions, auto-locks markets |
 | `agent/claim.js` | Weekly | Auto-claims RialoBot winnings |
 
 ---

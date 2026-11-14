@@ -52,7 +52,7 @@ Rialo Calls is an on-chain prediction market built on **Ethereum Sepolia**. User
 │                           Places bet on-chain              │
 │                           Records in Supabase              │
 │                                                             │
-│  agents/x-resolver.js  — Every hour                        │
+│  agents/x-resolver.js  — Every 30 minutes                  │
 │  (X Resolver)             Checks X accounts via fxtwitter  │
 │                           Calls lockBetting() if triggered │
 │                           Logs to x_monitor_logs           │
@@ -119,14 +119,15 @@ All deployed on **Ethereum Sepolia**.
 - Built-in monthly faucet: 1,000 RLO per claim, 30-day cooldown
 - `claim()` — anyone calls, gets free RLO
 
-### BettingPool — `0x16150779747feF42333a8FDD98E58BfE3CFe7cce`
+### BettingPool v2 — `0xf78F37976dF7a53e307E1A528D7Cd9aa04Ec744F`
 - Core contract. All prediction market logic.
 - `createPrediction()`, `lockBetting()`, `unlockBetting()`, `declareWinner()`
 - `placeBet(id, side, amount)` — requires prior ERC-20 `approve()`
 - `claimWinnings(id)` — proportional share of losing pool
-- `claimRefund(id)` — full refund if prediction is refunded
-- Statuses: `open → locked → yes_wins | no_wins | refunded | deleted`
+- `claimRefund(id)` — full refund if prediction is refunded (replaces delete)
+- Statuses: `open → locked → yes_wins | no_wins | refunded`
 - Admin-only: `ADMIN_ONE` and `ADMIN_TWO` addresses
+- v2: fully transparent on-chain, no prediction deletion — refund instead
 
 ### ProfileRegistry — `0x2DE1Ed07C104E775aE7368b1B8e2AA669b5CE5C8`
 - `mintProfile(name, bio, pfpHash, xUsername)` — costs 0.001 ETH, one-time
@@ -164,9 +165,15 @@ All deployed on **Ethereum Sepolia**.
 ```json
 {
   "handle": "elonmusk",
-  "condition": "followers_gte",
-  "target": 200000000,
-  "active": true
+  "condition_type": "follower_count",
+  "threshold": 200000000,
+  "activation_timestamp": 1731234567,
+  "last_tweet_id": "...",
+  "tracking_tweet_id": "...",
+  "last_pfp_url": "...",
+  "last_verified": false,
+  "found_integration_posts": [],
+  "found_topic_posts": []
 }
 ```
 
@@ -183,11 +190,22 @@ All deployed on **Ethereum Sepolia**.
 - Places bet on-chain, records in Supabase
 
 ### X Resolver — `agents/x-resolver.js`
-- **Schedule**: `0 * * * *` (every hour)
-- Queries `predictions_display` for rows where `x_monitor.active = true`
+- **Schedule**: `*/30 * * * *` (every 30 minutes)
+- Queries `predictions_display` for rows where `x_monitor.condition_type` is set
 - Fetches X account data via `api.fxtwitter.com` (no API key)
-- Supported conditions: `followers_gte/lte`, `tweets_gte`, `has_new_post`, `pfp_changed`, `post_views_gte/likes_gte/reposts_gte/replies_gte`
+- **Supported condition types:**
+  - `follower_count` — follower count threshold (gte/lte)
+  - `tweet_count` — tweet count milestone
+  - `pfp_change` — profile picture changed
+  - `verification_change` — verification status changed
+  - `new_post` — any new post since activation
+  - `next_tweet_views` / `next_tweet_likes` / `next_tweet_reposts` / `next_tweet_replies` — next tweet engagement thresholds
+  - `post_views` / `post_likes` / `post_reposts` / `post_replies` — tracked post engagement
+  - `new_integration` — resolver detects posts about a new partnership/integration
+  - `new_topic` — resolver detects posts matching a topic keyword
+- `withRetry` helper: 2 attempts with 5-minute gap before giving up
 - On trigger: calls `lockBetting(id)` on-chain, updates Supabase status, logs to `x_monitor_logs`
+- Admin still declares winner manually after event resolves
 
 ### Claim Agent — `agent/claim.js`
 - **Schedule**: Weekly

@@ -252,11 +252,10 @@ Shows Rialo logo + animated progress indicator.
 
 ### Prediction Card States
 ```
-Open     → YES/NO bet buttons, countdown timer, pool bars
+Open     → YES/NO bet buttons, countdown or 🤖 BOT ACTIVE badge, pool bars
 Locked   → 🔒 badge, no bet buttons, shows user's position
 Won      → ✅ Claim button (if winner), shows winning side
 Refunded → ↩ Refund button (if user bet)
-Deleted  → Renders null (hidden from grid)
 ```
 
 ### YES/NO Pool Bars

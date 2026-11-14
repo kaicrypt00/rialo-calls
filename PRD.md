@@ -66,7 +66,7 @@
 ### 4.2 Prediction Markets
 - Admin creates predictions with: title, description, banner, deadline, category
 - Categories: `community_calls`, `official_calls`
-- Statuses: `open → locked → yes_wins | no_wins | refunded | deleted`
+- Statuses: `open → locked → yes_wins | no_wins | refunded`
 - Pool model: all YES bettors vs all NO bettors, proportional payout
 - Minimum bet: 10 RLO
 - Users bet exactly once per prediction per session wallet
@@ -75,12 +75,16 @@
 - Admin activates X monitoring on any open prediction
 - Sets: X handle, condition type, target threshold
 - **Supported conditions:**
-  - `followers_gte` / `followers_lte` — follower count threshold
-  - `tweets_gte` — tweet count milestone
-  - `has_new_post` — any new post since activation
-  - `pfp_changed` — profile picture changed
-  - `post_views_gte` / `post_likes_gte` / `post_reposts_gte` / `post_replies_gte`
-- GitHub Actions checks every hour via `api.fxtwitter.com`
+  - `follower_count` — follower count threshold (gte/lte)
+  - `tweet_count` — tweet count milestone
+  - `pfp_change` — profile picture changed
+  - `verification_change` — verification status changed
+  - `new_post` — any new post since activation
+  - `next_tweet_views` / `next_tweet_likes` / `next_tweet_reposts` / `next_tweet_replies` — next tweet engagement thresholds
+  - `post_views` / `post_likes` / `post_reposts` / `post_replies` — tracked post engagement
+  - `new_integration` — detects posts about a new partnership/integration
+  - `new_topic` — detects posts matching a topic keyword
+- GitHub Actions checks every **30 minutes** via `api.fxtwitter.com`
 - On trigger: calls `lockBetting()` on-chain automatically
 - Admin still declares the winner manually after event resolves
 - Full log in `x_monitor_logs` Supabase table
@@ -202,8 +206,11 @@
 | v1 | Calls Guide chatbot | ✅ Live |
 | v1.1 | X Resolver (auto-lock via X conditions) | ✅ Live |
 | v1.1 | Admin Resolver tab | ✅ Live |
-| v2 | X Resolver — more condition types | 🔜 |
-| v2 | Social layer (follow callers, share predictions) | 🔜 |
-| v2 | More market categories (voted by community) | 🔜 |
-| v2 | More AI agents with different strategies | 🔜 |
-| v3 | Rialo Mainnet launch | 🔜 |
+| v2 | X Resolver — more condition types (`new_integration`, `new_topic`, engagement) | ✅ Live |
+| v2 | Publish date on prediction cards | ✅ Live |
+| v2 | 🤖 BOT ACTIVE real-time badge on resolver-monitored cards | ✅ Live |
+| v2 | BettingPool v2 (transparent, refund-only, no delete) | ✅ Live |
+| v3 | Social layer (follow callers, share predictions) | 🔜 |
+| v3 | More market categories (voted by community) | 🔜 |
+| v3 | More AI agents with different strategies | 🔜 |
+| v4 | Rialo Mainnet launch | 🔜 |
