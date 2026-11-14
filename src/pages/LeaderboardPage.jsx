@@ -101,6 +101,7 @@ export default function LeaderboardPage() {
   const callers = cachedLeaderboard ?? localCallers ?? []
   const loading = (cachedLeaderboard === null && cachedBetsStats === null) && localLoading
 
+  // Agent ranks freely with everyone else — no special pinning
   const top3 = callers.slice(0, 3)
   const rest = callers.slice(3)
 
@@ -241,19 +242,25 @@ export default function LeaderboardPage() {
           <>
             {/* ─── Podium: Rank 1 LEFT (large), Rank 2 CENTER, Rank 3 RIGHT ─── */}
             {top3.length > 0 && (
-              <div className="podium-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: top3.length === 1 ? '1fr' : top3.length === 2 ? '1fr 1fr' : '2fr 1.5fr 1.5fr',
-                gap: 16,
+              <div style={{
+                display: 'flex',
+                justifyContent: top3.length === 1 ? 'center' : 'stretch',
                 marginBottom: 32,
-                alignItems: 'start',
               }}>
+                <div className="podium-grid" style={{
+                  display: 'grid',
+                  gridTemplateColumns: top3.length === 1 ? '1fr' : top3.length === 2 ? '1fr 1fr' : '2fr 1.5fr 1.5fr',
+                  gap: 16,
+                  alignItems: 'start',
+                  width: top3.length === 1 ? 'min(480px, 100%)' : '100%',
+                }}>
                 {/* Rank 1 — LEFT, larger */}
                 {top3[0] && <PodiumCard caller={top3[0]} rank={1} isFirst />}
                 {/* Rank 2 — CENTER */}
                 {top3[1] && <PodiumCard caller={top3[1]} rank={2} />}
                 {/* Rank 3 — RIGHT */}
                 {top3[2] && <PodiumCard caller={top3[2]} rank={3} />}
+              </div>
               </div>
             )}
 
@@ -481,7 +488,7 @@ function PodiumCard({ caller, rank, isFirst }) {
         color: s.color,
         marginBottom: 4,
       }}>
-        {caller.name || shortAddress(caller.wallet_address)}{caller.is_agent && ' 🤖'}
+        {caller.name || shortAddress(caller.wallet_address)}
       </div>
 
       {/* Win rate */}
@@ -594,7 +601,7 @@ function TableRow({ caller, rank }) {
             fontSize: 15,
             color: 'var(--text-primary)',
           }}>
-            {caller.name || shortAddress(caller.wallet_address)}{caller.is_agent && ' 🤖'}
+            {caller.name || shortAddress(caller.wallet_address)}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-tertiary)' }}>
             {caller.total_calls ?? 0} calls
