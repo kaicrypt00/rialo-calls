@@ -327,7 +327,10 @@ function CreatePredictionSection() {
       }
 
       const YEAR_2099_ISO = '2099-01-01T00:00:00.000Z'
-      const { error: sbErr } = await supabase.from('predictions_display').insert({
+      // Use upsert so a stale row with the same id doesn't cause a duplicate-key error.
+      // onConflict:'id' means: if a row with this id already exists, overwrite it with
+      // the fresh data (effectively replacing any leftover from a previous failed attempt).
+      const { error: sbErr } = await supabase.from('predictions_display').upsert({
         id: Number(newId),
         title: title.trim(),
         description: desc.trim(),
@@ -338,7 +341,7 @@ function CreatePredictionSection() {
         yes_pool: 0,
         no_pool: 0,
         category: category || 'community_calls',
-      })
+      }, { onConflict: 'id' })
       // Surface Supabase errors to admin — don't silently swallow them
       if (sbErr) throw new Error(`Prediction created on-chain ✅ but failed to save to display: ${sbErr.message}`)
 

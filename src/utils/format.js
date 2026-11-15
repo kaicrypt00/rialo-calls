@@ -45,12 +45,11 @@ export function formatCountdown(secondsLeft) {
   const d = Math.floor(secondsLeft / 86400)
   const h = Math.floor((secondsLeft % 86400) / 3600)
   const m = Math.floor((secondsLeft % 3600) / 60)
-  const s = secondsLeft % 60
 
   if (secondsLeft < 300)  return { text: 'BETS CLOSING SOON', level: 'danger' }
-  if (secondsLeft < 3600) return { text: `${m}m ${s}s`,        level: 'warning' }
-  if (d > 0)              return { text: `${d}d ${h}h ${m}m ${s}s`, level: 'normal' }
-  return { text: `${h}h ${m}m ${s}s`, level: 'normal' }
+  if (secondsLeft < 3600) return { text: `${m}m`,              level: 'warning' }
+  if (d > 0)              return { text: `${d}d ${h}h`,        level: 'normal' }
+  return { text: `${h}h ${m}m`, level: 'normal' }
 }
 
 // Format relative time (2 mins ago, etc.)
