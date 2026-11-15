@@ -72,13 +72,13 @@ function SettledCard({ prediction }) {
       }}
     >
       {/* Banner */}
-      <div style={{ position: 'relative', height: 160, overflow: 'hidden', flexShrink: 0, background: '#0d0d0d' }}>
+      <div style={{ position: 'relative', height: 160, overflow: 'hidden', flexShrink: 0 }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.85 }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
           />
         ) : (
           <div style={{
@@ -91,11 +91,22 @@ function SettledCard({ prediction }) {
         {/* Settled overlay gradient */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.85) 100%)`,
+          background: `linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.75) 100%)`,
         }} />
 
-        {/* Status badge + publish date — same row, top-left */}
-        <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Settled date bottom-right — stays on banner */}
+        <div style={{ position: 'absolute', bottom: 12, right: 14 }}>
+          <span style={{ fontSize: 11, color: 'rgba(223,219,207,0.5)', fontFamily: 'var(--font-mono)' }}>
+            Settled {formatSettledDate(prediction.settled_at)}
+          </span>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '14px 22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* Status badge + publish date — left edge, below banner */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             className={`status-pill ${isYesWins ? 'status-settled-yes' : isNoWins ? 'status-settled-no' : 'status-refunded'}`}
             style={{ fontSize: 11 }}
@@ -106,49 +117,15 @@ function SettledCard({ prediction }) {
           {prediction.created_at && (
             <span style={{
               display: 'inline-flex', alignItems: 'center',
-              padding: '4px 10px', borderRadius: 999,
+              padding: '3px 9px', borderRadius: 999,
               fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
               fontFamily: 'var(--font-mono)',
-              background: 'rgba(10,10,10,0.72)',
-              color: 'rgba(223,219,207,0.75)',
-              border: '1px solid rgba(223,219,207,0.15)',
-              backdropFilter: 'blur(6px)',
+              color: 'rgba(223,219,207,0.6)',
             }}>
               {formatPublishDate(prediction.created_at)}
             </span>
           )}
         </div>
-
-        {/* Category badge */}
-        {prediction.category && (
-          <div style={{ position: 'absolute', top: 14, right: 14 }}>
-            <span style={{
-              display: 'inline-block',
-              padding: '3px 9px',
-              borderRadius: 999,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              background: 'rgba(10,10,10,0.7)',
-              color: 'var(--text-secondary)',
-              border: '1px solid rgba(223,219,207,0.1)',
-            }}>
-              {prediction.category === 'community_calls' ? 'Community' : prediction.category === 'official_calls' ? 'Official' : prediction.category}
-            </span>
-          </div>
-        )}
-
-        {/* Settled date bottom-right */}
-        <div style={{ position: 'absolute', bottom: 12, right: 14 }}>
-          <span style={{ fontSize: 11, color: 'rgba(223,219,207,0.5)', fontFamily: 'var(--font-mono)' }}>
-            Settled {formatSettledDate(prediction.settled_at)}
-          </span>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding: '20px 22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Title */}
         <div

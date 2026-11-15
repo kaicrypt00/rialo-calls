@@ -389,14 +389,13 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
       <div style={{
         position: 'relative', height: 192, overflow: 'hidden',
         borderRadius: '16px 16px 0 0', flexShrink: 0,
-        background: '#0d0d0d',
       }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9 }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.82 }}
           />
         ) : (
           <div style={{
@@ -406,15 +405,19 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
           }}>🔮</div>
         )}
 
-        {/* Bottom fade for readability */}
+        {/* Bottom fade overlay */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, transparent 50%, rgba(10,10,10,0.6) 100%)',
+          background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.55) 100%)',
           pointerEvents: 'none',
         }} />
+      </div>
 
-        {/* Status badge + publish date — same row, top-left */}
-        <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* ── Card body ── */}
+      <div style={{ padding: '16px 22px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* Status badge + date row — left edge of card body, below banner */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isSettled ? (
             <span className={`status-pill ${prediction.status === 'yes_wins' ? 'status-settled-yes' : 'status-settled-no'}`}>
               {prediction.status === 'yes_wins' ? '✓ YES WINS' : '✗ NO WINS'}
@@ -433,22 +436,15 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
           {prediction.created_at && (
             <span style={{
               display: 'inline-flex', alignItems: 'center',
-              padding: '4px 10px', borderRadius: 999,
+              padding: '3px 9px', borderRadius: 999,
               fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
               fontFamily: 'var(--font-mono)',
-              background: 'rgba(10,10,10,0.72)',
-              color: 'rgba(223,219,207,0.75)',
-              border: '1px solid rgba(223,219,207,0.15)',
-              backdropFilter: 'blur(6px)',
+              color: 'rgba(223,219,207,0.6)',
             }}>
               {formatPublishDate(prediction.created_at)}
             </span>
           )}
         </div>
-      </div>
-
-      {/* ── Card body ── */}
-      <div style={{ padding: '22px 22px 26px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Title */}
         <div>
