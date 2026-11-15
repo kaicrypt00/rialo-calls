@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../config/supabase'
 import { useDataCache } from '../context/DataPrefetchContext'
 import { Link } from 'react-router-dom'
+import { formatPublishDate } from '../utils/format'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -71,13 +72,13 @@ function SettledCard({ prediction }) {
       }}
     >
       {/* Banner */}
-      <div style={{ position: 'relative', height: 160, overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ position: 'relative', height: 160, overflow: 'hidden', flexShrink: 0, background: '#0d0d0d' }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.85 }}
           />
         ) : (
           <div style={{
@@ -93,14 +94,29 @@ function SettledCard({ prediction }) {
           background: `linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.85) 100%)`,
         }} />
 
-        {/* Status badge */}
-        <div style={{ position: 'absolute', top: 14, left: 14 }}>
+        {/* Status badge + publish date — same row, top-left */}
+        <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             className={`status-pill ${isYesWins ? 'status-settled-yes' : isNoWins ? 'status-settled-no' : 'status-refunded'}`}
             style={{ fontSize: 11 }}
           >
             {winnerEmoji} {winnerLabel}
           </span>
+          {/* Publish date chip */}
+          {prediction.created_at && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '4px 10px', borderRadius: 999,
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+              fontFamily: 'var(--font-mono)',
+              background: 'rgba(10,10,10,0.72)',
+              color: 'rgba(223,219,207,0.75)',
+              border: '1px solid rgba(223,219,207,0.15)',
+              backdropFilter: 'blur(6px)',
+            }}>
+              {formatPublishDate(prediction.created_at)}
+            </span>
+          )}
         </div>
 
         {/* Category badge */}

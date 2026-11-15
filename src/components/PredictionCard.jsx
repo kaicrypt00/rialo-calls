@@ -386,13 +386,17 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
     <div className="glass-card glass-card-hover prediction-card">
 
       {/* ── Banner image ── */}
-      <div style={{ position: 'relative', height: 192, overflow: 'hidden', borderRadius: '16px 16px 0 0', flexShrink: 0 }}>
+      <div style={{
+        position: 'relative', height: 192, overflow: 'hidden',
+        borderRadius: '16px 16px 0 0', flexShrink: 0,
+        background: '#0d0d0d',
+      }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9 }}
           />
         ) : (
           <div style={{
@@ -402,8 +406,15 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
           }}>🔮</div>
         )}
 
-        {/* Status badge */}
-        <div style={{ position: 'absolute', top: 14, left: 14 }}>
+        {/* Bottom fade for readability */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, transparent 50%, rgba(10,10,10,0.6) 100%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Status badge + publish date — same row, top-left */}
+        <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           {isSettled ? (
             <span className={`status-pill ${prediction.status === 'yes_wins' ? 'status-settled-yes' : 'status-settled-no'}`}>
               {prediction.status === 'yes_wins' ? '✓ YES WINS' : '✗ NO WINS'}
@@ -418,6 +429,21 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
               LIVE
             </span>
           )}
+          {/* Publish date chip — Rialo golden theme */}
+          {prediction.created_at && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '4px 10px', borderRadius: 999,
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+              fontFamily: 'var(--font-mono)',
+              background: 'rgba(10,10,10,0.72)',
+              color: 'rgba(223,219,207,0.75)',
+              border: '1px solid rgba(223,219,207,0.15)',
+              backdropFilter: 'blur(6px)',
+            }}>
+              {formatPublishDate(prediction.created_at)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -427,11 +453,6 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
         {/* Title */}
         <div>
           <div className="prediction-card-title" style={{ marginBottom: 4 }}>{prediction.title}</div>
-          {prediction.created_at && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
-              Published {formatPublishDate(prediction.created_at)}
-            </div>
-          )}
           {prediction.description && (
             <div className="prediction-card-desc" style={{ whiteSpace: 'pre-wrap' }}>
               <DescriptionText text={prediction.description} />
