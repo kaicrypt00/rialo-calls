@@ -385,39 +385,32 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
   return (
     <div className="glass-card glass-card-hover prediction-card">
 
-      {/* ── Banner image ── */}
-      <div style={{
-        position: 'relative', height: 192, overflow: 'hidden',
-        borderRadius: '16px 16px 0 0', flexShrink: 0,
-      }}>
+      {/* ── Banner image — natural height, full image visible, no cropping ── */}
+      <div style={{ position: 'relative', borderRadius: '16px 16px 0 0', overflow: 'hidden', flexShrink: 0 }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.82 }}
+            style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.9 }}
           />
         ) : (
           <div style={{
-            width: '100%', height: '100%',
+            height: 180,
             background: 'linear-gradient(135deg, #141414 0%, #1C1C1C 60%, #141414 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56,
           }}>🔮</div>
         )}
 
-        {/* Bottom fade overlay */}
+        {/* Subtle bottom fade */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.55) 100%)',
+          background: 'linear-gradient(to bottom, transparent 55%, rgba(10,10,10,0.5) 100%)',
           pointerEvents: 'none',
         }} />
-      </div>
 
-      {/* ── Card body ── */}
-      <div style={{ padding: '16px 22px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* Status badge + date row — left edge of card body, below banner */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Status badge — top-left inside banner */}
+        <div style={{ position: 'absolute', top: 12, left: 12 }}>
           {isSettled ? (
             <span className={`status-pill ${prediction.status === 'yes_wins' ? 'status-settled-yes' : 'status-settled-no'}`}>
               {prediction.status === 'yes_wins' ? '✓ YES WINS' : '✗ NO WINS'}
@@ -432,19 +425,29 @@ export default function PredictionCard({ prediction, onBetPlaced }) {
               LIVE
             </span>
           )}
-          {/* Publish date chip — Rialo golden theme */}
-          {prediction.created_at && (
+        </div>
+
+        {/* Publish date chip — top-right inside banner, Rialo theme */}
+        {prediction.created_at && (
+          <div style={{ position: 'absolute', top: 12, right: 12 }}>
             <span style={{
               display: 'inline-flex', alignItems: 'center',
-              padding: '3px 9px', borderRadius: 999,
+              padding: '4px 10px', borderRadius: 999,
               fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
               fontFamily: 'var(--font-mono)',
-              color: 'rgba(223,219,207,0.6)',
+              background: 'rgba(10,10,10,0.68)',
+              color: 'rgba(223,219,207,0.9)',
+              border: '1px solid rgba(223,219,207,0.18)',
+              backdropFilter: 'blur(8px)',
             }}>
               {formatPublishDate(prediction.created_at)}
             </span>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Card body ── */}
+      <div style={{ padding: '20px 22px 26px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Title */}
         <div>

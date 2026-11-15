@@ -71,61 +71,61 @@ function SettledCard({ prediction }) {
         e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.4)'
       }}
     >
-      {/* Banner */}
-      <div style={{ position: 'relative', height: 160, overflow: 'hidden', flexShrink: 0 }}>
+      {/* Banner — natural height, full image visible, no cropping */}
+      <div style={{ position: 'relative', borderRadius: '16px 16px 0 0', overflow: 'hidden', flexShrink: 0 }}>
         {prediction.banner_url ? (
           <img
             src={prediction.banner_url}
             alt={prediction.title}
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
+            style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.85 }}
           />
         ) : (
           <div style={{
-            width: '100%', height: '100%',
+            height: 160,
             background: 'linear-gradient(135deg, #141414 0%, #1C1C1C 60%, #141414 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48,
           }}>🔮</div>
         )}
 
-        {/* Settled overlay gradient */}
+        {/* Overlay gradient */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.75) 100%)`,
+          background: `linear-gradient(to bottom, transparent 50%, rgba(10,10,10,0.6) 100%)`,
+          pointerEvents: 'none',
         }} />
 
-        {/* Settled date bottom-right — stays on banner */}
-        <div style={{ position: 'absolute', bottom: 12, right: 14 }}>
-          <span style={{ fontSize: 11, color: 'rgba(223,219,207,0.5)', fontFamily: 'var(--font-mono)' }}>
-            Settled {formatSettledDate(prediction.settled_at)}
-          </span>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding: '14px 22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Status badge + publish date — left edge, below banner */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Status badge — top-left inside banner */}
+        <div style={{ position: 'absolute', top: 12, left: 12 }}>
           <span
             className={`status-pill ${isYesWins ? 'status-settled-yes' : isNoWins ? 'status-settled-no' : 'status-refunded'}`}
             style={{ fontSize: 11 }}
           >
             {winnerEmoji} {winnerLabel}
           </span>
-          {/* Publish date chip */}
-          {prediction.created_at && (
+        </div>
+
+        {/* Publish date chip — top-right inside banner, Rialo theme */}
+        {prediction.created_at && (
+          <div style={{ position: 'absolute', top: 12, right: 12 }}>
             <span style={{
               display: 'inline-flex', alignItems: 'center',
-              padding: '3px 9px', borderRadius: 999,
+              padding: '4px 10px', borderRadius: 999,
               fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
               fontFamily: 'var(--font-mono)',
-              color: 'rgba(223,219,207,0.6)',
+              background: 'rgba(10,10,10,0.68)',
+              color: 'rgba(223,219,207,0.9)',
+              border: '1px solid rgba(223,219,207,0.18)',
+              backdropFilter: 'blur(8px)',
             }}>
               {formatPublishDate(prediction.created_at)}
             </span>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '20px 22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Title */}
         <div
